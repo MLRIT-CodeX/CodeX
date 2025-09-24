@@ -234,11 +234,13 @@ const getDetailedUserStats = async (req, res) => {
     // Calculate performance metrics
     const totalMcqScore = userStats.lessonScores.reduce((sum, lesson) => sum + lesson.mcqScore, 0) +
                          userStats.moduleTestScores.reduce((sum, test) => sum + test.mcqScore, 0) +
-                         (userStats.finalExamScore?.mcqScore || 0);
+                         (userStats.finalExamScore?.mcqScore || 0) +
+                         userStats.skillTestFinalExamScores.reduce((sum, exam) => sum + exam.mcqScore, 0);
 
     const totalCodingScore = userStats.lessonScores.reduce((sum, lesson) => sum + lesson.codingScore, 0) +
                             userStats.moduleTestScores.reduce((sum, test) => sum + test.codingScore, 0) +
-                            (userStats.finalExamScore?.codingScore || 0);
+                            (userStats.finalExamScore?.codingScore || 0) +
+                            userStats.skillTestFinalExamScores.reduce((sum, exam) => sum + exam.codingScore, 0);
 
     const strongestArea = totalMcqScore > totalCodingScore ? 'MCQ' : 'Coding';
     const weakestArea = totalMcqScore < totalCodingScore ? 'MCQ' : 'Coding';
@@ -250,7 +252,8 @@ const getDetailedUserStats = async (req, res) => {
       breakdown: {
         lessonScore: userStats.totalLessonScore,
         moduleTestScore: userStats.totalModuleTestScore,
-        finalExamScore: userStats.totalFinalExamScore
+        finalExamScore: userStats.totalFinalExamScore,
+        skillTestFinalExamScore: userStats.totalSkillTestFinalExamScore
       },
       performance: {
         strongestArea,
@@ -262,7 +265,8 @@ const getDetailedUserStats = async (req, res) => {
       progress: {
         lessonsCompleted: userStats.lessonsCompleted,
         moduleTestsCompleted: userStats.moduleTestsCompleted,
-        finalExamCompleted: userStats.finalExamCompleted
+        finalExamCompleted: userStats.finalExamCompleted,
+        skillTestFinalExamsCompleted: userStats.skillTestFinalExamsCompleted
       },
       rank: userStats.rank,
       percentile: userStats.percentile,
@@ -324,6 +328,11 @@ const updateUserScore = async (req, res) => {
         leaderboardEntry.updateFinalExamScore(examMcqScore, examCodingScore, examMaxScore);
         break;
 
+      case 'skillTestFinalExam':
+        const { skillTestId, attemptId, score, maxScore: skillTestMaxScore, percentage, passed, timeSpent } = assessmentData;
+        leaderboardEntry.updateSkillTestFinalExamScore(skillTestId, attemptId, score, skillTestMaxScore, percentage, passed, timeSpent);
+        break;
+
       default:
         return res.status(400).json({ message: "Invalid assessment type" });
     }
@@ -339,7 +348,8 @@ const updateUserScore = async (req, res) => {
       breakdown: {
         lessonScore: leaderboardEntry.totalLessonScore,
         moduleTestScore: leaderboardEntry.totalModuleTestScore,
-        finalExamScore: leaderboardEntry.totalFinalExamScore
+        finalExamScore: leaderboardEntry.totalFinalExamScore,
+        skillTestFinalExamScore: leaderboardEntry.totalSkillTestFinalExamScore
       }
     });
   } catch (err) {

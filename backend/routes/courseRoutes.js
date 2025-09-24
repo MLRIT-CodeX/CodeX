@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
 const Course = require("../models/Course");
+const SkillTest = require("../models/SkillTest");
 const { authenticateToken, isAdmin } = require("../middleware/authMiddleware");
 
 // Health check endpoint (no authentication required)
@@ -84,6 +85,110 @@ function validateLessonStructure(topics) {
   return { valid: true };
 }
 
+// Helper: Generate final exam from course content
+async function generateFinalExam(course, scoringConfig) {
+  try {
+    console.log(`Generating final exam for course: ${course.title}`);
+    
+    // Collect all MCQs and coding challenges from all lessons
+    const allMCQs = [];
+    const allCodingChallenges = [];
+    
+    course.topics.forEach((topic, topicIndex) => {
+      topic.lessons.forEach((lesson, lessonIndex) => {
+        // Add MCQs with enhanced metadata
+        if (lesson.mcqs && lesson.mcqs.length > 0) {
+          lesson.mcqs.forEach((mcq, mcqIndex) => {
+            allMCQs.push({
+              question: mcq.question,
+              options: mcq.options,
+              correct: mcq.correct,
+              explanation: mcq.explanation,
+              marks: scoringConfig?.finalExamMcqMarks || 20,
+              difficulty: course.difficulty || 'Medium',
+              topicTitle: topic.title,
+              lessonTitle: lesson.title,
+              source: `Topic ${topicIndex + 1}, Lesson ${lessonIndex + 1}, MCQ ${mcqIndex + 1}`
+            });
+          });
+        }
+        
+        // Add coding challenges with enhanced metadata
+        if (lesson.codeChallenges && lesson.codeChallenges.length > 0) {
+          lesson.codeChallenges.forEach((challenge, challengeIndex) => {
+            allCodingChallenges.push({
+              title: challenge.title,
+              description: challenge.description,
+              sampleInput: challenge.sampleInput,
+              sampleOutput: challenge.sampleOutput,
+              constraints: challenge.constraints,
+              initialCode: challenge.initialCode,
+              language: challenge.language || 'python',
+              marks: scoringConfig?.finalExamCodingMarks || 100,
+              difficulty: course.difficulty || 'Medium',
+              timeLimit: 300, // 5 minutes per coding challenge
+              topicTitle: topic.title,
+              lessonTitle: lesson.title,
+              source: `Topic ${topicIndex + 1}, Lesson ${lessonIndex + 1}, Challenge ${challengeIndex + 1}`,
+              testCases: challenge.testCases || [
+                {
+                  input: challenge.sampleInput || "",
+                  expectedOutput: challenge.sampleOutput || "",
+                  isHidden: false
+                }
+              ]
+            });
+          });
+        }
+      });
+    });
+    
+    // Select questions for final exam (sample selection - you can make this more sophisticated)
+    const selectedMCQs = allMCQs.slice(0, Math.min(10, allMCQs.length)); // Max 10 MCQs
+    const selectedCoding = allCodingChallenges.slice(0, Math.min(5, allCodingChallenges.length)); // Max 5 coding challenges
+    
+    // Calculate total marks
+    const mcqMarks = selectedMCQs.reduce((sum, mcq) => sum + (mcq.marks || 20), 0);
+    const codingMarks = selectedCoding.reduce((sum, challenge) => sum + (challenge.marks || 100), 0);
+    const totalMarks = mcqMarks + codingMarks;
+    
+    // Create final exam SkillTest
+    const finalExam = new SkillTest({
+      title: `${course.title} - Final Exam`,
+      description: `Comprehensive final examination covering all topics in ${course.title}. This exam tests your mastery of the complete course curriculum.`,
+      duration: 120, // 2 hours
+      type: 'final_exam',
+      difficulty: course.difficulty || 'Medium',
+      courseId: course._id,
+      isFinalExam: true,
+      passingScore: 70,
+      totalMarks: totalMarks,
+      questions: selectedMCQs,
+      codingProblems: selectedCoding,
+      securitySettings: {
+        preventCopyPaste: true,
+        preventTabSwitch: true,
+        preventRightClick: true,
+        fullScreenRequired: true,
+        webcamMonitoring: true,
+        timeLimit: 120
+      },
+      attempts: [],
+      isActive: true,
+      createdBy: null // Will be set by the calling function
+    });
+    
+    const savedExam = await finalExam.save();
+    console.log(`✅ Final exam created successfully with ID: ${savedExam._id}`);
+    console.log(`📊 Exam stats: ${selectedMCQs.length} MCQs, ${selectedCoding.length} coding challenges, ${totalMarks} total marks`);
+    
+    return savedExam;
+  } catch (error) {
+    console.error('❌ Error generating final exam:', error);
+    throw error;
+  }
+}
+
 // Create new course with topics and lessons (Admin only)
 router.post(
   "/",
@@ -106,10 +211,106 @@ router.post(
     }
 
     try {
-      const course = new Course(req.body);
-      await course.save();
-      res.status(201).json(course);
+      // Create course with auto-generated final exam
+      const courseData = { ...req.body };
+      
+      // Generate final exam from course content if not provided
+      if (!courseData.finalExam && courseData.topics && courseData.topics.length > 0) {
+        console.log('Auto-generating final exam for course:', courseData.title);
+        
+        // Collect all MCQs and coding challenges from lessons
+        const allMCQs = [];
+        const allCodingChallenges = [];
+        
+        courseData.topics.forEach((topic, topicIndex) => {
+          if (topic.lessons && topic.lessons.length > 0) {
+            topic.lessons.forEach((lesson, lessonIndex) => {
+              // Collect MCQs
+              if (lesson.mcqs && lesson.mcqs.length > 0) {
+                lesson.mcqs.forEach((mcq, mcqIndex) => {
+                  allMCQs.push({
+                    question: mcq.question,
+                    options: mcq.options,
+                    correct: mcq.correct,
+                    explanation: mcq.explanation,
+                    marks: courseData.scoringConfig?.finalExamMcqMarks || 20,
+                    difficulty: courseData.difficulty || 'medium'
+                  });
+                });
+              }
+              
+              // Collect coding challenges
+              if (lesson.codeChallenges && lesson.codeChallenges.length > 0) {
+                lesson.codeChallenges.forEach((challenge, challengeIndex) => {
+                  allCodingChallenges.push({
+                    title: challenge.title,
+                    description: challenge.description,
+                    sampleInput: challenge.sampleInput,
+                    sampleOutput: challenge.sampleOutput,
+                    constraints: challenge.constraints,
+                    initialCode: challenge.initialCode,
+                    language: challenge.language || 'python',
+                    marks: courseData.scoringConfig?.finalExamCodingMarks || 100,
+                    difficulty: courseData.difficulty || 'medium',
+                    timeLimit: challenge.timeLimit || 300,
+                    testCases: challenge.testCases || [
+                      {
+                        input: challenge.sampleInput || "",
+                        expectedOutput: challenge.sampleOutput || "",
+                        isHidden: false
+                      }
+                    ]
+                  });
+                });
+              }
+            });
+          }
+        });
+        
+        // Select questions for final exam (you can make this more sophisticated)
+        const selectedMCQs = allMCQs.slice(0, Math.min(10, allMCQs.length)); // Max 10 MCQs
+        const selectedCoding = allCodingChallenges.slice(0, Math.min(5, allCodingChallenges.length)); // Max 5 coding challenges
+        
+        // Calculate total marks
+        const mcqMarks = selectedMCQs.reduce((sum, mcq) => sum + (mcq.marks || 20), 0);
+        const codingMarks = selectedCoding.reduce((sum, challenge) => sum + (challenge.marks || 100), 0);
+        const totalMarks = mcqMarks + codingMarks;
+        
+        // Create final exam object
+        courseData.finalExam = {
+          title: `${courseData.title} - Final Exam`,
+          description: `Comprehensive final examination covering all topics in ${courseData.title}. This exam tests your mastery of the complete course curriculum.`,
+          mcqs: selectedMCQs,
+          codeChallenges: selectedCoding,
+          totalMarks: totalMarks > 0 ? totalMarks : 1000,
+          duration: 120, // 2 hours
+          passingScore: 70,
+          isSecure: true,
+          securitySettings: {
+            preventCopyPaste: true,
+            preventTabSwitch: true,
+            preventRightClick: true,
+            fullScreenRequired: true,
+            webcamMonitoring: true,
+            timeLimit: 120
+          },
+          isActive: true
+        };
+        
+        console.log(`✅ Auto-generated final exam with ${selectedMCQs.length} MCQs and ${selectedCoding.length} coding challenges`);
+      }
+      
+      const course = new Course(courseData);
+      const savedCourse = await course.save();
+      
+      console.log(`✅ Course created successfully: ${savedCourse.title}`);
+      if (savedCourse.finalExam) {
+        console.log(`📊 Final exam included with ${savedCourse.finalExam.mcqs.length} MCQs and ${savedCourse.finalExam.codeChallenges.length} coding challenges`);
+      }
+      
+      res.status(201).json(savedCourse);
     } catch (err) {
+      console.error('Error creating course:', err);
       res.status(500).json({ message: err.message });
     }
   }
@@ -501,6 +702,175 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Error fetching user courses:', err);
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+// @route   POST /api/courses/populate-final-exams
+// @desc    Populate final exams for courses that don't have them (Admin only)
+router.post("/populate-final-exams", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    console.log('Starting final exam population process...');
+    
+    // Get all active courses
+    const allCourses = await Course.find({ isActive: true });
+    console.log(`Found ${allCourses.length} active courses`);
+    
+    const results = {
+      total: allCourses.length,
+      processed: 0,
+      updated: 0,
+      skipped: 0,
+      errors: 0,
+      details: []
+    };
+    
+    for (const course of allCourses) {
+      try {
+        results.processed++;
+        
+        const courseDetail = {
+          id: course._id,
+          title: course.title,
+          status: '',
+          message: ''
+        };
+        
+        // Check if course already has a populated final exam
+        const hasValidFinalExam = course.finalExam && 
+          course.finalExam.mcqs && 
+          course.finalExam.codeChallenges && 
+          (course.finalExam.mcqs.length > 0 || course.finalExam.codeChallenges.length > 0);
+        
+        if (hasValidFinalExam) {
+          courseDetail.status = 'skipped';
+          courseDetail.message = `Already has final exam (${course.finalExam.mcqs.length} MCQs, ${course.finalExam.codeChallenges.length} coding challenges)`;
+          results.skipped++;
+        } else {
+          // Collect content from lessons
+          const allMCQs = [];
+          const allCodingChallenges = [];
+          
+          course.topics.forEach((topic) => {
+            if (topic.lessons && topic.lessons.length > 0) {
+              topic.lessons.forEach((lesson) => {
+                // Collect MCQs
+                if (lesson.mcqs && lesson.mcqs.length > 0) {
+                  lesson.mcqs.forEach((mcq) => {
+                    allMCQs.push({
+                      question: mcq.question,
+                      options: mcq.options,
+                      correct: mcq.correct,
+                      explanation: mcq.explanation,
+                      marks: course.scoringConfig?.finalExamMcqMarks || 20,
+                      difficulty: course.difficulty || 'medium'
+                    });
+                  });
+                }
+                
+                // Collect coding challenges
+                if (lesson.codeChallenges && lesson.codeChallenges.length > 0) {
+                  lesson.codeChallenges.forEach((challenge) => {
+                    allCodingChallenges.push({
+                      title: challenge.title,
+                      description: challenge.description,
+                      sampleInput: challenge.sampleInput,
+                      sampleOutput: challenge.sampleOutput,
+                      constraints: challenge.constraints,
+                      initialCode: challenge.initialCode,
+                      language: challenge.language || 'python',
+                      marks: course.scoringConfig?.finalExamCodingMarks || 100,
+                      difficulty: course.difficulty || 'medium',
+                      timeLimit: challenge.timeLimit || 300,
+                      testCases: challenge.testCases || [
+                        {
+                          input: challenge.sampleInput || "",
+                          expectedOutput: challenge.sampleOutput || "",
+                          isHidden: false
+                        }
+                      ]
+                    });
+                  });
+                }
+              });
+            }
+          });
+          
+          if (allMCQs.length === 0 && allCodingChallenges.length === 0) {
+            courseDetail.status = 'skipped';
+            courseDetail.message = 'No MCQs or coding challenges found in lessons';
+            results.skipped++;
+          } else {
+            // Select questions for final exam
+            const selectedMCQs = allMCQs.slice(0, Math.min(10, allMCQs.length));
+            const selectedCoding = allCodingChallenges.slice(0, Math.min(5, allCodingChallenges.length));
+            
+            // Calculate total marks
+            const mcqMarks = selectedMCQs.reduce((sum, mcq) => sum + (mcq.marks || 20), 0);
+            const codingMarks = selectedCoding.reduce((sum, challenge) => sum + (challenge.marks || 100), 0);
+            const totalMarks = mcqMarks + codingMarks;
+            
+            // Create final exam object
+            const finalExamData = {
+              title: `${course.title} - Final Exam`,
+              description: `Comprehensive final examination covering all topics in ${course.title}. This exam tests your mastery of the complete course curriculum.`,
+              mcqs: selectedMCQs,
+              codeChallenges: selectedCoding,
+              totalMarks: totalMarks > 0 ? totalMarks : 1000,
+              duration: 120, // 2 hours
+              passingScore: 70,
+              isSecure: true,
+              securitySettings: {
+                preventCopyPaste: true,
+                preventTabSwitch: true,
+                preventRightClick: true,
+                fullScreenRequired: true,
+                webcamMonitoring: true,
+                timeLimit: 120
+              },
+              isActive: true
+            };
+            
+            // Update the course
+            await Course.findByIdAndUpdate(
+              course._id,
+              { finalExam: finalExamData },
+              { new: true }
+            );
+            
+            courseDetail.status = 'updated';
+            courseDetail.message = `Created final exam with ${selectedMCQs.length} MCQs and ${selectedCoding.length} coding challenges (${totalMarks} marks)`;
+            results.updated++;
+          }
+        }
+        
+        results.details.push(courseDetail);
+        
+      } catch (error) {
+        console.error(`Error processing course ${course.title}:`, error);
+        results.errors++;
+        results.details.push({
+          id: course._id,
+          title: course.title,
+          status: 'error',
+          message: error.message
+        });
+      }
+    }
+    
+    console.log('Final exam population completed:', results);
+    res.json({
+      success: true,
+      message: 'Final exam population completed',
+      results
+    });
+    
+  } catch (error) {
+    console.error('Error in populate final exams:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to populate final exams',
+      error: error.message 
+    });
   }
 });
 

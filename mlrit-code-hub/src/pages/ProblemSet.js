@@ -52,16 +52,41 @@ const ProblemSet = () => {
   }, [navigate]);
 
   const filteredProblems = problems.filter((problem) => {
-    const matchesSearch = problem.title.toLowerCase().includes(search.toLowerCase());
+    const searchTerm = search.trim();
+    
+    // If no search term, show all problems (filtered by difficulty only)
+    if (!searchTerm) {
+      const matchesDifficulty =
+        difficulty === "All" || problem.difficulty?.toLowerCase() === difficulty.toLowerCase();
+      return matchesDifficulty;
+    }
+    
+    // Search ONLY by the display number (NO. column: 1, 2, 3, 4...)
+    const problemDisplayNumber = problems.indexOf(problem) + 1;
+    const matchesDisplayNumber = problemDisplayNumber.toString() === searchTerm;
+    
     const matchesDifficulty =
       difficulty === "All" || problem.difficulty?.toLowerCase() === difficulty.toLowerCase();
-    return matchesSearch && matchesDifficulty;
+    
+    console.log(`Searching for number "${searchTerm}":`, {
+      displayNumber: problemDisplayNumber,
+      matchesDisplayNumber,
+      title: problem.title
+    });
+    
+    return matchesDisplayNumber && matchesDifficulty;
   });
 
   const indexOfLast = currentPage * problemsPerPage;
   const indexOfFirst = indexOfLast - problemsPerPage;
   const currentProblems = filteredProblems.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredProblems.length / problemsPerPage);
+
+  // Debug information
+  console.log("Current search:", search);
+  console.log("Total problems:", problems.length);
+  console.log("Filtered problems:", filteredProblems.length);
+  console.log("Current problems on page:", currentProblems.length);
 
   const handleNext = () => {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
@@ -76,15 +101,23 @@ const ProblemSet = () => {
       <h2>Problem Set</h2>
 
       <div className="problemset-filters">
-        <input
-          type="text"
-          placeholder="Search problems..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(1);
-          }}
-        />
+        <div className="search-container">
+          <input
+            type="text"
+            placeholder="Search by problem number (1, 2, 3...)..."
+            value={search}
+            onChange={(e) => {
+              console.log("Search input changed:", e.target.value);
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="search-input"
+          />
+          <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
         <select
           value={difficulty}
           onChange={(e) => {

@@ -618,3 +618,70 @@
     min-width: 45px;
   }
 }
+
+/* Enhanced Search Styles */
+.search-container {
+  position: relative;
+  display: inline-block;
+  width: 300px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px 12px 45px;
+  background: #1a1a1a;
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #805ad5;
+  box-shadow: 0 0 0 3px rgba(128, 90, 213, 0.1);
+}
+
+.search-input::placeholder {
+  color: #a0aec0;
+}
+
+.search-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a0aec0;
+  pointer-events: none;
+}
+
+.search-container:focus-within .search-icon {
+  color: #805ad5;
+}
+
+/* Update existing filter styles to work with new search */
+.problemset-filters {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.problemset-filters select {
+  padding: 12px 16px;
+  background: #1a1a1a;
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.problemset-filters select:focus {
+  border-color: #805ad5;
+  box-shadow: 0 0 0 3px rgba(128, 90, 213, 0.1);
+}

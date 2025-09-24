@@ -180,11 +180,65 @@
   /* Navigation */
   .leaderboard-nav {
     display: flex;
-    gap: 8px;
+    justify-content: center;
+    align-items: center;
     margin-bottom: 24px;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 12px;
     padding: 4px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .refresh-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .refresh-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 6px;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .refresh-btn .spinning {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .last-updated {
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  /* SkillTest progress bar color */
+  .progress-fill.skilltest {
+    background: linear-gradient(90deg, #8b5cf6, #a855f7);
   }
   
   .nav-tab {

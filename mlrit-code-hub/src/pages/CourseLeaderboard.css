@@ -48,6 +48,37 @@
     margin-bottom: 15px;
   }
   
+  .leaderboard-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+  
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #3b82f6;
+    margin-bottom: 5px;
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    text-align: center;
+  }
+  
   .college-info {
     font-size: 1.1rem;
     font-weight: 600;
@@ -59,10 +90,71 @@
     font-weight: 700;
   }
   
-  .search-container {
+  .search-and-controls {
     margin-bottom: 25px;
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  .search-container {
+    display: flex;
     justify-content: center;
+  }
+  
+  .leaderboard-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .refresh-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .refresh-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+  
+  .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .auto-refresh-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  
+  .auto-refresh-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #3b82f6;
+  }
+  
+  .last-updated {
+    color: #6b7280;
+    font-size: 12px;
+    font-style: italic;
   }
   
   .search-input {
@@ -91,6 +183,28 @@
     border-radius: 8px;
     margin-bottom: 20px;
     text-align: center;
+  }
+  
+  .update-notification {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10b981;
+    color: #34d399;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   
   .loading-spinner {
@@ -217,6 +331,12 @@
     font-size: 1rem;
     color: #10b981;
     line-height: 1.2;
+  }
+  
+  .overall-score .score-percentage {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
   }
   
   .score-breakdown {

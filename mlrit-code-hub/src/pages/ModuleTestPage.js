@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Clock, ArrowLeft, ArrowRight, CheckCircle, Code, BookOpen, Award } from 'lucide-react';
 import Editor from '@monaco-editor/react';
+import ModuleTestResultPage from '../components/ModuleTestResultPage';
 import './ModuleTestPage.css';
 
 const ModuleTestPage = () => {
@@ -35,6 +36,7 @@ const ModuleTestPage = () => {
   const [customInput, setCustomInput] = useState('');
   const [leftWidth, setLeftWidth] = useState(50);
   const [codeHeight, setCodeHeight] = useState(60); // Percentage for code area height
+  const [testStartTime, setTestStartTime] = useState(null);
   const containerRef = useRef(null);
   const verticalContainerRef = useRef(null);
 
@@ -254,75 +256,200 @@ def solution():
       return;
     }
 
-    // Calculate results locally for now
-    const allQuestions = [...(moduleTest.mcqQuestions || []), ...(moduleTest.codingQuestions || [])];
-    const totalQuestions = allQuestions.length;
-    
-    let correctCount = 0;
-    let mcqCorrect = 0;
-    let codingCorrect = 0;
-    
-    // Check MCQ answers
-    moduleTest.mcqQuestions?.forEach((question, index) => {
-      const userAnswer = savedAnswers[`mcq-${index}`];
-      if (userAnswer === question.correctAnswer) {
-        correctCount++;
-        mcqCorrect++;
+    // Calculate time taken
+    const timeTaken = testStartTime ? Math.floor((new Date() - testStartTime) / 1000) : 0;
+
+    // Submit results to backend
+    try {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user'));
+      
+      // Get userId safely
+      let userId;
+      if (user && user.id) {
+        userId = user.id;
+      } else {
+        // Try to extract from token if user object is null
+        try {
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          userId = tokenPayload.id;
+        } catch (e) {
+          console.error('Could not extract user ID from token:', e);
+          throw new Error('User authentication failed. Please login again.');
+        }
       }
-    });
-    
-    // For coding questions, assume correct if there's an answer
-    moduleTest.codingQuestions?.forEach((question, index) => {
-      const userCode = codingAnswers[`coding-${index}`];
-      if (userCode && userCode.trim().length > 0) {
-        correctCount++;
-        codingCorrect++;
-      }
-    });
-    
-    const wrongCount = totalQuestions - correctCount - (totalQuestions - Object.keys(savedAnswers).length - Object.keys(codingAnswers).length);
-    const unattemptedCount = totalQuestions - Object.keys(savedAnswers).length - Object.keys(codingAnswers).length;
-    const percentage = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
-    
-    const testResult = {
-      score: correctCount,
-      totalMarks: moduleTest?.totalMarks || 100,
-      correctAnswers: correctCount,
-      wrongAnswers: wrongCount,
-      unattempted: unattemptedCount,
-      percentage: percentage,
-      totalQuestions: totalQuestions,
-      mcqCorrect: mcqCorrect,
-      codingCorrect: codingCorrect
-    };
-    
-    setScore(percentage);
-    setTestResults(testResult);
-    setShowDetailedResults(true);
+      
+      console.log('Submitting module test for userId:', userId);
+      
+      // Prepare answers in the format expected by backend
+      const answers = [];
+      allQuestions.forEach((question, index) => {
+        if (question.type === 'mcq') {
+          const userAnswer = savedAnswers[index];
+          answers.push(userAnswer !== undefined ? userAnswer : null);
+        }
+      });
+      
+      // Prepare coding answers in the format expected by backend
+      const backendCodingAnswers = {};
+      allQuestions.forEach((question, index) => {
+        if (question.type === 'coding') {
+          const userCode = codingAnswers[index];
+          if (userCode && userCode.code && userCode.code.trim()) {
+            backendCodingAnswers[index] = {
+              code: userCode.code,
+              language: userCode.language || 'python'
+            };
+          }
+        }
+      });
+
+      // Submit to progress API with enhanced data
+      const response = await axios.post(
+        'http://localhost:5000/api/progress/module-test',
+        {
+          userId: userId,
+          courseId: courseId,
+          topicId: topicId,
+          answers: answers,
+          codingAnswers: backendCodingAnswers,
+          topicTitle: topic?.title || 'Module Test',
+          timeTaken: timeTaken
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      console.log('✅ Module test results submitted successfully:', response.data);
+      
+      // Use the enhanced test result from backend
+      const enhancedTestResult = response.data.testResult;
+      setTestResults(enhancedTestResult);
+      setScore(enhancedTestResult.percentage);
+      setShowDetailedResults(true);
+      
+    } catch (error) {
+      console.error('❌ Error submitting module test results:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        userId,
+        courseId,
+        topicId
+      });
+      
+      // Fallback to local calculation if backend fails
+      const fallbackResult = {
+        totalScore: Object.keys(savedAnswers).length + Object.keys(codingAnswers).length,
+        totalMarks: moduleTest?.totalMarks || 100,
+        percentage: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        unattempted: allQuestions.length - totalAnswered,
+        totalQuestions: allQuestions.length,
+        mcqScore: 0,
+        codingScore: 0,
+        totalMcqMarks: 0,
+        totalCodingMarks: 0,
+        timeTaken: timeTaken,
+        error: 'Failed to submit to server'
+      };
+      
+      setTestResults(fallbackResult);
+      setScore(0);
+      setShowDetailedResults(true);
+    }
   };
 
   const handleForceSubmit = async () => {
     setShowSubmitWarning(false);
     
-    // Calculate results with no answers
-    const allQuestions = [...(moduleTest.mcqQuestions || []), ...(moduleTest.codingQuestions || [])];
-    const totalQuestions = allQuestions.length;
+    // Calculate time taken
+    const timeTaken = testStartTime ? Math.floor((new Date() - testStartTime) / 1000) : 0;
     
-    const testResult = {
-      score: 0,
-      totalMarks: moduleTest?.totalMarks || 100,
-      correctAnswers: 0,
-      wrongAnswers: 0,
-      unattempted: totalQuestions,
-      percentage: 0,
-      totalQuestions: totalQuestions,
-      mcqCorrect: 0,
-      codingCorrect: 0
-    };
-    
-    setScore(0);
-    setTestResults(testResult);
-    setShowDetailedResults(true);
+    // Submit empty results to backend
+    try {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user'));
+      
+      // Get userId safely
+      let userId;
+      if (user && user.id) {
+        userId = user.id;
+      } else {
+        // Try to extract from token if user object is null
+        try {
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          userId = tokenPayload.id;
+        } catch (e) {
+          console.error('Could not extract user ID from token:', e);
+          throw new Error('User authentication failed. Please login again.');
+        }
+      }
+      
+      console.log('Force submitting module test for userId:', userId);
+      
+      // Prepare empty answers
+      const answers = [];
+      const backendCodingAnswers = {};
+
+      // Submit to progress API with enhanced data
+      const response = await axios.post(
+        'http://localhost:5000/api/progress/module-test',
+        {
+          userId: userId,
+          courseId: courseId,
+          topicId: topicId,
+          answers: answers,
+          codingAnswers: backendCodingAnswers,
+          topicTitle: topic?.title || 'Module Test',
+          timeTaken: timeTaken
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      console.log('✅ Empty module test results submitted successfully:', response.data);
+      
+      // Use the enhanced test result from backend
+      const enhancedTestResult = response.data.testResult;
+      setTestResults(enhancedTestResult);
+      setScore(enhancedTestResult.percentage);
+      setShowDetailedResults(true);
+      
+    } catch (error) {
+      console.error('❌ Error submitting empty module test results:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        userId,
+        courseId,
+        topicId
+      });
+      
+      // Fallback result
+      const fallbackResult = {
+        totalScore: 0,
+        totalMarks: moduleTest?.totalMarks || 100,
+        percentage: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        unattempted: allQuestions.length,
+        totalQuestions: allQuestions.length,
+        mcqScore: 0,
+        codingScore: 0,
+        totalMcqMarks: 0,
+        totalCodingMarks: 0,
+        timeTaken: timeTaken,
+        error: 'Failed to submit to server'
+      };
+      
+      setTestResults(fallbackResult);
+      setScore(0);
+      setShowDetailedResults(true);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -343,141 +470,31 @@ def solution():
     }
   };
 
-  // Show detailed results page if available
+  // Show enhanced results page if available
   if (showDetailedResults && testResults) {
     return (
-      <div className="detailed-results-page">
-        <div className="results-header">
-          <h1>Module test: {topic?.title || 'Output / print in python'} - Report</h1>
-          <p className="attempted-date">Attempted on {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-          <button 
-            className="review-assessment-btn"
-            onClick={() => setShowDetailedResults(false)}
-          >
-            📋 Review Assessment
-          </button>
-        </div>
-
-        <div className="score-section">
-          <div className="total-score">
-            <h2>Your Total Score</h2>
-            <div className="score-display">
-              <span className="score-number">{testResults.correctAnswers || 0}</span>
-              <span className="score-total">/{testResults.totalQuestions || (moduleTest?.mcqQuestions?.length || 0) + (moduleTest?.codingQuestions?.length || 0)} points</span>
-            </div>
-            <div className="score-breakdown">
-              <div className="breakdown-item correct">
-                <span className="indicator">●</span>
-                <span className="count">{String(testResults.correctAnswers || 0).padStart(2, '0')}</span>
-                <span className="label">Correct Answers</span>
-              </div>
-              <div className="breakdown-item wrong">
-                <span className="indicator">●</span>
-                <span className="count">{String(testResults.wrongAnswers || 0).padStart(2, '0')}</span>
-                <span className="label">Wrong Answers</span>
-              </div>
-              <div className="breakdown-item unattempted">
-                <span className="indicator">●</span>
-                <span className="count">{String(testResults.unattempted || 0).padStart(2, '0')}</span>
-                <span className="label">Unattempted</span>
-              </div>
-            </div>
-
-          </div>
-          <div className="skill-score">
-            <div className="circular-progress">
-              <div 
-                className="progress-circle"
-                style={{
-                  background: `conic-gradient(#10b981 0deg, #10b981 ${(testResults.percentage || 0) * 3.6}deg, #e5e7eb ${(testResults.percentage || 0) * 3.6}deg, #e5e7eb 360deg)`
-                }}
-              >
-                <span className="percentage">{Math.round(testResults.percentage || 0)}%</span>
-              </div>
-            </div>
-            <p className="skill-label">SKILL SCORE</p>
-          </div>
-        </div>
-
-        <div className="topic-summary">
-          <h3>Topic wise summary</h3>
-          <table className="summary-table">
-            <thead>
-              <tr>
-                <th>Topic</th>
-                <th>Correct</th>
-                <th>Total</th>
-                <th>Remarks</th>
-                <th>Resources</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{topic?.title || 'Printing in Python'}</td>
-                <td>{testResults.correctAnswers || 0}</td>
-                <td>{testResults.totalQuestions || (moduleTest?.mcqQuestions?.length || 0) + (moduleTest?.codingQuestions?.length || 0)}</td>
-                <td>
-                  <span className={`remark ${(testResults.percentage || 0) >= 70 ? 'strong' : (testResults.percentage || 0) >= 40 ? 'average' : 'weak'}`}>
-                    ● {(testResults.percentage || 0) >= 70 ? 'Strong' : (testResults.percentage || 0) >= 40 ? 'Average' : 'Weak'}
-                  </span>
-                </td>
-                <td>
-                  <button className="learn-btn" onClick={() => navigate(`/courses/${courseId}`)}>Learn →</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="problem-type-summary">
-          <h3>Problem type</h3>
-          <table className="summary-table">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Correct</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>MCQs</td>
-                <td>{testResults.mcqCorrect || 0}</td>
-                <td>{moduleTest?.mcqQuestions?.length || 0}</td>
-              </tr>
-              <tr>
-                <td>Coding Problems</td>
-                <td>{testResults.codingCorrect || 0}</td>
-                <td>{moduleTest?.codingQuestions?.length || 0}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="results-actions">
-          <button 
-            className="back-to-course-btn"
-            onClick={() => navigate(`/courses/${courseId}`)}
-          >
-            Back to Course
-          </button>
-          <button 
-            className="retake-test-btn"
-            onClick={() => {
-              setShowDetailedResults(false);
-              setShowResults(false);
-              setCurrentQuestion(0);
-              setSavedAnswers({});
-              setCodingAnswers({});
-              setSelectedAnswers({});
-              setScore(0);
-              setTestResults(null);
-            }}
-          >
-            Retake Test
-          </button>
-        </div>
-      </div>
+      <ModuleTestResultPage
+        testResults={testResults}
+        courseId={courseId}
+        topicId={topicId}
+        topic={topic}
+        moduleTest={moduleTest}
+        onRetakeTest={() => {
+          setShowDetailedResults(false);
+          setShowResults(false);
+          setCurrentQuestion(0);
+          setSavedAnswers({});
+          setCodingAnswers({});
+          setSelectedAnswers({});
+          setCode('');
+          setScore(0);
+          setTestResults(null);
+          setTimeLeft(1800);
+          setTestStartTime(null);
+          setShowIntro(true);
+        }}
+        onBackToCourse={() => navigate(`/courses/${courseId}`)}
+      />
     );
   }
 
@@ -570,7 +587,10 @@ def solution():
               <button 
                 className="start-assessment-btn"
                 disabled={!agreedToRules}
-                onClick={() => setShowIntro(false)}
+                onClick={() => {
+                  setShowIntro(false);
+                  setTestStartTime(new Date());
+                }}
               >
                 Start Assessment
               </button>

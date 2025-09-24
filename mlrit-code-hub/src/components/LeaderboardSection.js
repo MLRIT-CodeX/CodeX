@@ -18,16 +18,34 @@ import {
 } from 'lucide-react';
 import './LeaderboardSection.css';
 
-const LeaderboardSection = ({ courseId, userId, token }) => {
+const LeaderboardSection = ({ courseId, userId, token, refreshTrigger }) => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [userStats, setUserStats] = useState(null);
   const [userRank, setUserRank] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState('leaderboard'); // 'leaderboard' or 'stats'
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   useEffect(() => {
     fetchLeaderboardData();
+  }, [courseId, userId, token]);
+
+  // Refresh when refreshTrigger changes (e.g., after completing a test)
+  useEffect(() => {
+    if (refreshTrigger) {
+      console.log('🔄 LeaderboardSection - Refreshing due to trigger:', refreshTrigger);
+      fetchLeaderboardData();
+    }
+  }, [refreshTrigger]);
+
+  // Auto-refresh leaderboard every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLeaderboardData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
   }, [courseId, userId, token]);
 
   const fetchLeaderboardData = async () => {
@@ -35,27 +53,43 @@ const LeaderboardSection = ({ courseId, userId, token }) => {
       setLoading(true);
       setError(null);
 
-      // Fetch course leaderboard
-      const leaderboardResponse = await axios.get(
-        `http://localhost:5000/api/leaderboard/course/${courseId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      console.log('🔍 LeaderboardSection - Fetching data for courseId:', courseId, 'at', new Date().toISOString());
 
-      // Fetch user's rank
-      const rankResponse = await axios.get(
-        `http://localhost:5000/api/leaderboard/user/${userId}/rank?courseId=${courseId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // Fetch all data in parallel for better performance
+      const [leaderboardResponse, rankResponse, statsResponse] = await Promise.all([
+        axios.get(
+          `http://localhost:5000/api/course-leaderboard/${courseId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        ),
+        axios.get(
+          `http://localhost:5000/api/course-leaderboard/${courseId}/user/${userId}/rank`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        ),
+        axios.get(
+          `http://localhost:5000/api/course-leaderboard/${courseId}/user/${userId}/stats`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+      ]);
 
-      // Fetch detailed user stats
-      const statsResponse = await axios.get(
-        `http://localhost:5000/api/leaderboard/user/${userId}/stats?courseId=${courseId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      console.log('🔍 LeaderboardSection - API responses:', {
+        leaderboard: leaderboardResponse.data,
+        userRank: rankResponse.data,
+        userStats: statsResponse.data,
+        timestamp: new Date().toISOString()
+      });
+
+      // Debug rank data specifically
+      console.log('🎯 Rank Debug Info:', {
+        userRankData: rankResponse.data,
+        userStatsRank: statsResponse.data?.rank,
+        actualRankToShow: rankResponse.data?.rank || statsResponse.data?.rank,
+        totalUsers: rankResponse.data?.totalUsers || statsResponse.data?.totalUsers
+      });
 
       setLeaderboard(leaderboardResponse.data.leaderboard || []);
       setUserRank(rankResponse.data);
       setUserStats(statsResponse.data);
+      setLastRefresh(Date.now());
     } catch (err) {
       console.error('Error fetching leaderboard data:', err);
       setError('Failed to load leaderboard data');
@@ -110,43 +144,24 @@ const LeaderboardSection = ({ courseId, userId, token }) => {
 
   return (
     <div className="leaderboard-section">
-      {/* User Rank Card */}
-      {userRank && (
-        <div className="user-rank-card">
-          <div className="rank-display">
-            {getRankIcon(userRank.rank)}
-            <div className="rank-info">
-              <span className="rank-text">Your Rank</span>
-              <span className="rank-value">#{userRank.rank} of {userRank.totalUsers}</span>
-            </div>
-          </div>
-          <div className="score-display">
-            <span className="score-label">Score</span>
-            <span className="score-value">{userRank.score || 0}</span>
-          </div>
-          <div className="percentile-display">
-            <span className="percentile-label">Top</span>
-            <span className="percentile-value">{100 - userRank.percentile}%</span>
-          </div>
-        </div>
-      )}
-
       {/* Navigation Tabs */}
       <div className="leaderboard-nav">
-        <button 
-          className={`nav-tab ${activeView === 'leaderboard' ? 'active' : ''}`}
-          onClick={() => setActiveView('leaderboard')}
-        >
-          <Trophy size={18} />
-          Rankings
-        </button>
-        <button 
-          className={`nav-tab ${activeView === 'stats' ? 'active' : ''}`}
-          onClick={() => setActiveView('stats')}
-        >
-          <TrendingUp size={18} />
-          My Stats
-        </button>
+        <div className="nav-tabs">
+          <button 
+            className={`nav-tab ${activeView === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setActiveView('leaderboard')}
+          >
+            <Trophy size={18} />
+            Rankings
+          </button>
+          <button 
+            className={`nav-tab ${activeView === 'stats' ? 'active' : ''}`}
+            onClick={() => setActiveView('stats')}
+          >
+            <TrendingUp size={18} />
+            My Stats
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -173,17 +188,17 @@ const LeaderboardSection = ({ courseId, userId, token }) => {
                 <tbody>
                   {leaderboard.map((entry, index) => (
                     <tr 
-                      key={`${entry.user?._id || entry.userId?.toString() || 'user'}-${entry.rank || index}-${index}`}
-                      className={`rank-row rank-${entry.rank} ${entry.user?._id === userId ? 'current-user' : ''}`}
+                      key={`${entry.userId || entry.user?._id || 'user'}-${entry.rank || index}-${index}`}
+                      className={`rank-row rank-${entry.rank} ${(entry.userId || entry.user?._id) === userId ? 'current-user' : ''}`}
                     >
                       <td>
                         <span className={`badge rank-badge-${entry.rank}`}>
                           {entry.rank}
                         </span>
                       </td>
-                      <td className="user-name">{entry.user?.name || 'Anonymous'}</td>
-                      <td>{entry.user?.rollNumber || 'N/A'}</td>
-                      <td>{entry.user?.department || 'N/A'}</td>
+                      <td className="user-name">{entry.name || entry.user?.name || 'Anonymous'}</td>
+                      <td>{entry.rollNumber || entry.user?.rollNumber || 'N/A'}</td>
+                      <td>{entry.department || entry.user?.department || 'N/A'}</td>
                       <td className="total-score">{entry.overallScore || 0}</td>
                     </tr>
                   ))}
@@ -224,8 +239,12 @@ const LeaderboardSection = ({ courseId, userId, token }) => {
                       <Star size={24} className="star-icon" />
                     </div>
                     <div className="stat-info">
-                      <span className="stat-value">{userStats.rank || 'N/A'}</span>
-                      <span className="stat-label">Rank</span>
+                      <span className="stat-value">
+                        {userRank?.rank ? `#${userRank.rank}` : (userStats?.rank ? `#${userStats.rank}` : 'N/A')}
+                      </span>
+                      <span className="stat-label">
+                        Rank {userRank?.totalUsers ? `of ${userRank.totalUsers}` : (userStats?.totalUsers ? `of ${userStats.totalUsers}` : '')}
+                      </span>
                     </div>
                   </div>
                   
@@ -285,25 +304,51 @@ const LeaderboardSection = ({ courseId, userId, token }) => {
                     </div>
                   </div>
                   
-                  <div className="breakdown-item">
-                    <div className="breakdown-header">
-                      <Award size={20} />
-                      <span>Final Exam</span>
-                    </div>
-                    <div className="breakdown-score">
-                      {userStats.breakdown?.finalExamScore || 0} pts
-                    </div>
-                    <div className="breakdown-progress">
-                      <div className="progress-bar">
-                        <div 
-                          className="progress-fill final"
-                          style={{ 
-                            width: `${Math.min(100, (userStats.breakdown?.finalExamScore || 0) / Math.max(1, userStats.overallScore) * 100)}%` 
-                          }}
-                        ></div>
+                  {/* Only show Final Exam if there's a score */}
+                  {userStats.breakdown?.finalExamScore > 0 && (
+                    <div className="breakdown-item">
+                      <div className="breakdown-header">
+                        <Award size={20} />
+                        <span>Final Exam</span>
+                      </div>
+                      <div className="breakdown-score">
+                        {userStats.breakdown?.finalExamScore || 0} pts
+                      </div>
+                      <div className="breakdown-progress">
+                        <div className="progress-bar">
+                          <div 
+                            className="progress-fill final"
+                            style={{ 
+                              width: `${Math.min(100, (userStats.breakdown?.finalExamScore || 0) / Math.max(1, userStats.overallScore) * 100)}%` 
+                            }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  
+                  {/* SkillTest Final Exam Score */}
+                  {userStats.breakdown?.skillTestFinalExamScore > 0 && (
+                    <div className="breakdown-item">
+                      <div className="breakdown-header">
+                        <Zap size={20} />
+                        <span>SkillTest Final Exam</span>
+                      </div>
+                      <div className="breakdown-score">
+                        {userStats.breakdown?.skillTestFinalExamScore || 0} pts
+                      </div>
+                      <div className="breakdown-progress">
+                        <div className="progress-bar">
+                          <div 
+                            className="progress-fill skilltest"
+                            style={{ 
+                              width: `${Math.min(100, (userStats.breakdown?.skillTestFinalExamScore || 0) / Math.max(1, userStats.overallScore) * 100)}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

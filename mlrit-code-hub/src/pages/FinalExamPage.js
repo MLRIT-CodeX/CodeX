@@ -137,12 +137,41 @@ const FinalExamPage = () => {
         return;
       }
       
+      console.log('Fetching final exam data for course:', courseId);
       const response = await axios.get(`http://localhost:5000/api/courses/${courseId}/final-exam`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      console.log('Final exam data fetched:', response.data);
+      
+      // Check if user has already completed the exam
+      if (response.data.lastAttempt && response.data.lastAttempt.submitted) {
+        navigate(`/course/${courseId}/final-exam/results`, {
+          state: {
+            results: response.data.lastAttempt || {},
+            finalExam: response.data.exam || {},
+            examData: response.data.exam || {}
+          }
+        });
+        return;
+      }
+      
       const examData = response.data.exam;
       const courseData = response.data.course;
+      
+      if (!examData) {
+        console.error('Assessment data is undefined for finalExam type');
+        setError('Final exam data not found');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Exam data loaded:', {
+        title: examData.title,
+        mcqs: examData.mcqs?.length || 0,
+        codeChallenges: examData.codeChallenges?.length || 0,
+        duration: examData.duration
+      });
       
       setExam(examData);
       setCourse(courseData);
@@ -155,6 +184,7 @@ const FinalExamPage = () => {
       ];
       setAllQuestions(combinedQuestions);
       
+      console.log('Combined questions loaded:', combinedQuestions.length);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching final exam:', error);
@@ -618,9 +648,19 @@ const FinalExamPage = () => {
     }, 2000);
 
     try {
-      setExamSubmitted(true);
+      setLoading(true);
       
-      // Calculate results locally
+      // Turn off webcam immediately when submitting
+      if (webcamStream) {
+        console.log('Stopping webcam stream...');
+        webcamStream.getTracks().forEach(track => {
+          track.stop();
+          console.log('Stopped track:', track.kind);
+        });
+        setWebcamStream(null);
+      }
+      
+      // Calculate results locally first
       const localResults = await calculateResults();
       
       // Stop timer and cleanup
@@ -630,42 +670,41 @@ const FinalExamPage = () => {
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
-      if (webcamStream) {
-        webcamStream.getTracks().forEach(track => track.stop());
-        setWebcamStream(null);
-      }
       
-      // Submit to backend and then redirect
-      await submitToBackend(autoSubmit, localResults);
+      // Submit to backend and get server results
+      const backendResponse = await submitToBackend(autoSubmit, localResults);
       
-      // Navigate to results page with calculated results
+      console.log('Using backend response for results:', backendResponse);
+      
+      // Use backend results if available, otherwise fall back to local results
+      const finalResults = backendResponse?.testResult || localResults;
+      
+      // Navigate to results page with complete data
       navigate(`/courses/${courseId}/final-exam/results`, {
         state: {
           results: {
-            correctCount: localResults.correctCount,
-            wrongCount: localResults.wrongCount,
-            unattemptedCount: localResults.unattemptedCount,
-            percentage: localResults.percentage,
-            totalQuestions: localResults.totalQuestions,
-            mcqCorrect: localResults.mcqCorrect,
-            codingCorrect: localResults.codingCorrect,
-            mcqAttempted: localResults.mcqAttempted,
-            codingAttempted: localResults.codingAttempted,
-            totalAttempted: localResults.totalAttempted
+            ...finalResults,
+            mcqResults: finalResults.mcqResults || localResults.mcqResults || [],
+            codingResults: finalResults.codingResults || localResults.codingResults || [],
+            timeSpent: (exam.duration * 60) - timeLeft,
+            autoSubmitted: autoSubmit,
+            securityViolations: securityViolations || [],
+            proctoringData: {
+              tabSwitchCount,
+              keystrokeLogging: keystrokeLogging.length,
+              mouseTracking: mouseTracking.length,
+              suspiciousActivity,
+              systemInfo,
+              browserInfo,
+              locationData
+            }
           },
-          score: localResults.percentage,
-          examData: {
-            title: exam.title || 'Final Exam',
+          finalExam: {
+            mcqs: exam.mcqs || [],
+            codeChallenges: exam.codeChallenges || [],
+            title: exam.title,
             duration: exam.duration,
             totalMarks: exam.totalMarks
-          },
-          submissionData: {
-            timeSpent: (exam.duration * 60) - timeLeft,
-            securityViolations: securityViolations,
-            autoSubmitted: autoSubmit,
-            proctoringData: {
-              tabSwitchCount: tabSwitchCount
-            }
           }
         }
       });
@@ -726,9 +765,32 @@ const FinalExamPage = () => {
       
       console.log('Backend submission successful:', response.data);
       
+      // Update leaderboard with final exam completion
+      try {
+        await axios.post(
+          `http://localhost:5000/api/course-leaderboard/${courseId}/update-score`,
+          {
+            userId,
+            assessmentType: 'finalExam',
+            assessmentData: {
+              mcqResults: localResults.mcqResults || [],
+              codingResults: localResults.codingResults || []
+            }
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('Leaderboard updated with final exam completion');
+      } catch (leaderboardError) {
+        console.warn('Failed to update leaderboard for final exam:', leaderboardError);
+      }
+      
+      // Trigger progress refresh for course page
+      localStorage.setItem('finalExamCompleted', Date.now().toString());
+      
+      return response.data;
     } catch (error) {
-      console.error('Backend submission failed:', error);
-      // Don't show error to user since they already see results
+      console.error('Error submitting to backend:', error);
+      throw error;
     }
   };
 
@@ -1512,40 +1574,36 @@ def solution():
                   <Editor
                     height="100%"
                     width="100%"
+                    language={language}
                     theme="vs-dark"
-                    language={language === 'cpp' ? 'cpp' : language}
-                    value={code}
-                    onChange={(val) => {
-                      setCode(val);
-                      setIsAnswerSaved(false);
+                    value={codingAnswers[currentQuestion - exam.mcqs.length] || ''}
+                    onChange={(value) => {
+                      const questionIndex = currentQuestion - exam.mcqs.length;
+                      setCodingAnswers(prev => ({
+                        ...prev,
+                        [questionIndex]: value
+                      }));
                     }}
-                    options={{ 
-                      fontSize: 14,
-                      fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                    options={{
                       minimap: { enabled: false },
+                      fontSize: 14,
+                      lineNumbers: 'on',
+                      roundedSelection: false,
                       scrollBeyondLastLine: false,
                       automaticLayout: true,
-                      lineNumbers: 'on',
-                      renderLineHighlight: 'line',
-                      overviewRulerBorder: false,
-                      hideCursorInOverviewRuler: true,
-                      overviewRulerLanes: 0,
-                      lineNumbersMinChars: 1,
-                      glyphMargin: false,
-                      folding: false,
-                      renderWhitespace: 'none',
-                      cursorBlinking: 'blink',
-                      cursorStyle: 'line',
-                      wordWrap: 'on',
-                      contextmenu: false,
-                      selectOnLineNumbers: true,
-                      padding: { top: 0, bottom: 0 },
-                      lineDecorationsWidth: 0,
-                      revealHorizontalRightPadding: 0,
-                      scrollbar: {
-                        verticalScrollbarSize: 10,
-                        horizontalScrollbarSize: 10
-                      }
+                      wordWrap: 'on'
+                    }}
+                    beforeMount={(monaco) => {
+                      // Disable web workers to avoid CDN issues
+                      window.MonacoEnvironment = {
+                        getWorker: () => {
+                          return new Worker(
+                            URL.createObjectURL(
+                              new Blob([''], { type: 'application/javascript' })
+                            )
+                          );
+                        }
+                      };
                     }}
                   />
                 </div>

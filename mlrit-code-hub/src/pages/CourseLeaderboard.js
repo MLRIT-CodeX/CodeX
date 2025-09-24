@@ -11,45 +11,134 @@ const CourseLeaderboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [updateNotification, setUpdateNotification] = useState(null);
   const { user } = useContext(UserContext);
 
-  useEffect(() => {
-    const fetchCourseLeaderboard = async () => {
-      try {
-        setLoading(true);
-        
-                 // Fetch course leaderboard data
-         const leaderboardRes = await axios.get(
-           `http://localhost:5000/api/course-leaderboard/${courseId}`,
-           {
-             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-           }
-         );
-         
-         // Fetch course info
-         const courseRes = await axios.get(
-           `http://localhost:5000/api/courses/${courseId}`,
-           {
-             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-           }
-         );
-        
-        setData(leaderboardRes.data.leaderboard || []);
-        setCourseInfo(courseRes.data);
-        setError("");
-      } catch (err) {
-        console.error("Course Leaderboard Error", err);
-        setError("Failed to load course leaderboard data");
-        setData([]);
-      } finally {
-        setLoading(false);
+  // Function to fetch leaderboard (extracted for reuse)
+  const fetchCourseLeaderboard = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch course leaderboard data
+      const leaderboardRes = await axios.get(
+        `http://localhost:5000/api/course-leaderboard/${courseId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      
+      // Fetch course info
+      const courseRes = await axios.get(
+        `http://localhost:5000/api/courses/${courseId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+     
+      const newData = leaderboardRes.data.leaderboard || [];
+      const newTotalUsers = leaderboardRes.data.totalUsers || 0;
+      
+      // Check for changes to show notification
+      if (data.length > 0) {
+        const hasChanges = JSON.stringify(newData) !== JSON.stringify(data);
+        if (hasChanges) {
+          setUpdateNotification('Leaderboard updated with new scores! 🎯');
+          setTimeout(() => setUpdateNotification(null), 5000); // Clear after 5 seconds
+        }
       }
-    };
+      
+      setData(newData);
+      setTotalUsers(newTotalUsers);
+      setCourseInfo(courseRes.data);
+      setError("");
+      setLastUpdated(new Date());
+      
+      console.log('Leaderboard data loaded:', {
+        totalEntries: newData.length,
+        totalUsers: newTotalUsers,
+        sampleEntry: newData[0] || null,
+        timestamp: new Date().toLocaleTimeString(),
+        hasChanges: data.length > 0 ? JSON.stringify(newData) !== JSON.stringify(data) : false
+      });
 
+      // Debug: Log all user scores to see why they're 0
+      console.log('🔍 Debugging leaderboard scores:');
+      newData.forEach((user, index) => {
+        console.log(`User ${index + 1} (${user.name}):`, {
+          overallScore: user.overallScore,
+          totalLessonScore: user.totalLessonScore,
+          totalModuleTestScore: user.totalModuleTestScore,
+          totalFinalExamScore: user.totalFinalExamScore,
+          lessonsCompleted: user.lessonsCompleted,
+          moduleTestsCompleted: user.moduleTestsCompleted,
+          finalExamCompleted: user.finalExamCompleted
+        });
+      });
+    } catch (err) {
+      console.error("Course Leaderboard Error", err);
+      setError("Failed to load course leaderboard data");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
     if (courseId) {
       fetchCourseLeaderboard();
     }
   }, [courseId]);
+
+  // Auto-refresh every 30 seconds when enabled
+  useEffect(() => {
+    if (!autoRefresh || !courseId) return;
+
+    const interval = setInterval(() => {
+      fetchCourseLeaderboard();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, courseId]);
+
+  // Manual refresh function
+  const handleRefresh = () => {
+    if (courseId) {
+      fetchCourseLeaderboard();
+    }
+  };
+
+  // Test function to add scores (for debugging)
+  const handleAddTestScores = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user'));
+      
+      let userId;
+      if (user && user.id) {
+        userId = user.id;
+      } else {
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        userId = tokenPayload.id;
+      }
+
+      await axios.post(
+        `http://localhost:5000/api/course-leaderboard/${courseId}/add-test-scores`,
+        { userId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log('✅ Test scores added successfully');
+      // Refresh leaderboard to see changes
+      handleRefresh();
+    } catch (error) {
+      console.error('❌ Error adding test scores:', error);
+    }
+  };
 
   const filteredData = Array.isArray(data) ? data.filter((userData) => {
     const matchesSearch = userData.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -75,6 +164,20 @@ const CourseLeaderboard = () => {
           </div>
         )}
         <p className="leaderboard-subtitle">Based on Course Assessment Performance</p>
+        <div className="leaderboard-stats">
+          <div className="stat-item">
+            <span className="stat-value">{totalUsers}</span>
+            <span className="stat-label">Total Participants</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{filteredData.filter(u => u.finalExamCompleted).length}</span>
+            <span className="stat-label">Final Exams Completed</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{filteredData.length > 0 ? Math.round(filteredData.reduce((sum, u) => sum + (u.averageScore || 0), 0) / filteredData.length) : 0}%</span>
+            <span className="stat-label">Average Score</span>
+          </div>
+        </div>
         {user && user.college && (
           <div className="college-info">
             College: <span className="college-name">{user.college}</span>
@@ -82,19 +185,69 @@ const CourseLeaderboard = () => {
         )}
       </div>
 
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="search-input"
-        />
+      <div className="search-and-controls">
+        <div className="search-container">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        
+        <div className="leaderboard-controls">
+          <button 
+            onClick={handleRefresh} 
+            className="refresh-btn"
+            disabled={loading}
+          >
+            🔄 {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+          
+          <button 
+            onClick={handleAddTestScores} 
+            className="test-btn"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}
+          >
+            🧪 Add Test Score
+          </button>
+          
+          <label className="auto-refresh-toggle">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+            />
+            Auto-refresh (30s)
+          </label>
+          
+          {lastUpdated && (
+            <span className="last-updated">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
       </div>
 
       {error && (
         <div className="error-message">
           {error}
+        </div>
+      )}
+
+      {updateNotification && (
+        <div className="update-notification">
+          {updateNotification}
         </div>
       )}
 
@@ -140,28 +293,33 @@ const CourseLeaderboard = () => {
                     <span className="department-badge">{userData.department}</span>
                   </td>
                   <td className="overall-score">
-                    <span className="score-value">{userData.overallScore}</span>
+                    <div className="score-breakdown">
+                      <span className="score-value">{userData.overallScore || 0}</span>
+                      <span className="score-percentage">
+                        ({userData.averageScore ? Math.round(userData.averageScore) : 0}%)
+                      </span>
+                    </div>
                   </td>
                   <td className="lesson-score">
                     <div className="score-breakdown">
-                      <span className="score">{userData.totalLessonScore}</span>
-                      <span className="completed">({userData.lessonsCompleted} completed)</span>
+                      <span className="score">{userData.totalLessonScore || 0}</span>
+                      <span className="completed">({userData.lessonsCompleted || 0} completed)</span>
                     </div>
                   </td>
                   <td className="module-test-score">
                     <div className="score-breakdown">
-                      <span className="score">{userData.totalModuleTestScore}</span>
-                      <span className="completed">({userData.moduleTestsCompleted} completed)</span>
+                      <span className="score">{userData.totalModuleTestScore || 0}</span>
+                      <span className="completed">({userData.moduleTestsCompleted || 0} completed)</span>
                     </div>
                   </td>
                   <td className="final-exam-score">
                     <div className="score-breakdown">
-                      <span className="score">{userData.totalFinalExamScore}</span>
-                                             <span className={`status ${userData.finalExamCompleted ? 'completed' : 'pending'}`}>
-                         {userData.finalExamCompleted ? '✓ Done' : '⏳ Pending'}
-                       </span>
-                     </div>
-                   </td>
+                      <span className="score">{userData.totalFinalExamScore || 0}</span>
+                      <span className={`status ${userData.finalExamCompleted ? 'completed' : 'pending'}`}>
+                        {userData.finalExamCompleted ? '✓ Done' : '⏳ Pending'}
+                      </span>
+                    </div>
+                  </td>
                    <td className="progress">
                      <div className="progress-bar">
                        <div 

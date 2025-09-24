@@ -1,7 +1,9 @@
-
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
+
+// Global error suppression for ResizeObserver errors
+import "./utils/errorSuppression";
 
 // Layout & Context
 import Navbar from "./components/Navbar";

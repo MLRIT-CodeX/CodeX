@@ -2,12 +2,15 @@ const mongoose = require("mongoose");
 const Leaderboard = require("../models/Leaderboard");
 const User = require("../models/user");
 const Course = require("../models/Course");
+const SkillTest = require("../models/SkillTest");
 
 // Get course-specific leaderboard based on course assessments
 const getCourseLeaderboard = async (req, res) => {
   try {
     const { courseId } = req.params;
     const { limit = 50, page = 1 } = req.query;
+
+    console.log(`🔍 NEW COURSE LEADERBOARD API - Fetching leaderboard for courseId: ${courseId}`);
 
     // Get leaderboard entries for this specific course
     const leaderboard = await Leaderboard.find({ courseId })
@@ -16,12 +19,31 @@ const getCourseLeaderboard = async (req, res) => {
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
 
+    console.log(`🔍 Found ${leaderboard.length} leaderboard entries for course ${courseId}`);
+
     // Calculate ranks and percentiles
     const totalUsers = await Leaderboard.countDocuments({ courseId });
     
     const leaderboardWithRanks = leaderboard.map((entry, index) => {
       const rank = (parseInt(page) - 1) * parseInt(limit) + index + 1;
       const percentile = totalUsers > 0 ? Math.round(((totalUsers - rank + 1) / totalUsers) * 100) : 100;
+      
+      // Debug logging for each entry
+      console.log(`🔍 Leaderboard entry ${rank} (${entry.userId.name}):`, {
+        overallScore: entry.overallScore,
+        totalLessonScore: entry.totalLessonScore,
+        totalModuleTestScore: entry.totalModuleTestScore,
+        totalFinalExamScore: entry.totalFinalExamScore,
+        totalSkillTestFinalExamScore: entry.totalSkillTestFinalExamScore,
+        lessonsCompleted: entry.lessonsCompleted,
+        moduleTestsCompleted: entry.moduleTestsCompleted,
+        finalExamCompleted: entry.finalExamCompleted,
+        skillTestFinalExamsCompleted: entry.skillTestFinalExamsCompleted,
+        lessonScoresCount: entry.lessonScores?.length || 0,
+        moduleTestScoresCount: entry.moduleTestScores?.length || 0,
+        hasFinalExamScore: !!entry.finalExamScore,
+        skillTestFinalExamScoresCount: entry.skillTestFinalExamScores?.length || 0
+      });
       
       return {
         userId: entry.userId._id,
@@ -35,9 +57,11 @@ const getCourseLeaderboard = async (req, res) => {
         totalLessonScore: entry.totalLessonScore,
         totalModuleTestScore: entry.totalModuleTestScore,
         totalFinalExamScore: entry.totalFinalExamScore,
+        totalSkillTestFinalExamScore: entry.totalSkillTestFinalExamScore,
         lessonsCompleted: entry.lessonsCompleted,
         moduleTestsCompleted: entry.moduleTestsCompleted,
         finalExamCompleted: entry.finalExamCompleted,
+        skillTestFinalExamsCompleted: entry.skillTestFinalExamsCompleted,
         averageScore: entry.averageScore,
         lastUpdated: entry.lastUpdated,
         rank,
@@ -137,7 +161,8 @@ const getUserCourseStats = async (req, res) => {
       breakdown: {
         lessonScore: userStats.totalLessonScore,
         moduleTestScore: userStats.totalModuleTestScore,
-        finalExamScore: userStats.totalFinalExamScore
+        finalExamScore: userStats.totalFinalExamScore,
+        skillTestFinalExamScore: userStats.totalSkillTestFinalExamScore
       },
       performance: {
         strongestArea,
@@ -148,7 +173,8 @@ const getUserCourseStats = async (req, res) => {
       progress: {
         lessonsCompleted: userStats.lessonsCompleted,
         moduleTestsCompleted: userStats.moduleTestsCompleted,
-        finalExamCompleted: userStats.finalExamCompleted
+        finalExamCompleted: userStats.finalExamCompleted,
+        skillTestFinalExamsCompleted: userStats.skillTestFinalExamsCompleted
       },
       rank,
       percentile,
@@ -222,6 +248,11 @@ const updateUserCourseScore = async (req, res) => {
           console.warn('Assessment data is undefined for moduleTest type');
           return res.status(400).json({ message: "Assessment data is required" });
         }
+        console.log('Processing moduleTest for leaderboard:', {
+          userId,
+          courseId,
+          assessmentData: JSON.stringify(assessmentData, null, 2)
+        });
         const { topicId: testTopicId, mcqResults: testMcqResults = [], codingResults: testCodingResults = [] } = assessmentData;
         
         // Fetch actual question marks from course model
@@ -307,6 +338,26 @@ const updateUserCourseScore = async (req, res) => {
         leaderboardEntry.updateFinalExamScore(examMcqScore, examCodingScore, examMaxScore);
         break;
 
+      case 'skillTestFinalExam':
+        if (!assessmentData) {
+          console.warn('Assessment data is undefined for skillTestFinalExam type');
+          return res.status(400).json({ message: "Assessment data is required" });
+        }
+        const { skillTestId, attemptId, score, maxScore: skillTestMaxScore, percentage, passed, timeSpent } = assessmentData;
+        
+        // Validate that the skill test exists and is a final exam
+        const skillTest = await SkillTest.findById(skillTestId);
+        if (!skillTest) {
+          return res.status(404).json({ message: "Skill test not found" });
+        }
+        
+        if (!skillTest.isFinalExam) {
+          return res.status(400).json({ message: "Skill test is not a final exam" });
+        }
+        
+        leaderboardEntry.updateSkillTestFinalExamScore(skillTestId, attemptId, score, skillTestMaxScore, percentage, passed, timeSpent);
+        break;
+
       default:
         return res.status(400).json({ message: "Invalid assessment type" });
     }
@@ -322,7 +373,8 @@ const updateUserCourseScore = async (req, res) => {
       breakdown: {
         lessonScore: leaderboardEntry.totalLessonScore,
         moduleTestScore: leaderboardEntry.totalModuleTestScore,
-        finalExamScore: leaderboardEntry.totalFinalExamScore
+        finalExamScore: leaderboardEntry.totalFinalExamScore,
+        skillTestFinalExamScore: leaderboardEntry.totalSkillTestFinalExamScore
       }
     });
   } catch (err) {
@@ -334,16 +386,175 @@ const updateUserCourseScore = async (req, res) => {
 // Helper function to update ranks for all users in a course
 const updateCourseRanks = async (courseId) => {
   try {
-    const leaderboardEntries = await Leaderboard.find({ courseId }).sort({ overallScore: -1 });
+    const leaderboardEntries = await Leaderboard.find({ courseId })
+      .sort({ 
+        overallScore: -1, 
+        lessonsCompleted: -1, 
+        moduleTestsCompleted: -1,
+        lastUpdated: 1 // Earlier completion gets better rank for ties
+      });
+    
+    let currentRank = 1;
+    let previousScore = null;
     
     for (let i = 0; i < leaderboardEntries.length; i++) {
       const entry = leaderboardEntries[i];
-      entry.rank = i + 1;
-      entry.percentile = leaderboardEntries.length > 0 ? Math.round(((leaderboardEntries.length - i) / leaderboardEntries.length) * 100) : 100;
+      
+      // Handle ties - users with same score get same rank
+      if (previousScore !== null && entry.overallScore < previousScore) {
+        currentRank = i + 1;
+      }
+      
+      entry.rank = currentRank;
+      entry.percentile = leaderboardEntries.length > 0 ? Math.round(((leaderboardEntries.length - currentRank + 1) / leaderboardEntries.length) * 100) : 100;
+      
+      console.log(`🏆 Updated rank for ${entry.userId}: Rank ${currentRank}, Score ${entry.overallScore}, Percentile ${entry.percentile}%`);
+      
       await entry.save();
+      previousScore = entry.overallScore;
     }
   } catch (err) {
     console.error("Error updating course ranks:", err);
+  }
+};
+
+// Test function to manually add scores (for debugging)
+const addTestScores = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { userId } = req.body;
+    
+    console.log(`🧪 Adding test scores for user ${userId} in course ${courseId}`);
+    
+    let leaderboardEntry = await Leaderboard.findOne({ userId, courseId });
+    
+    if (!leaderboardEntry) {
+      leaderboardEntry = new Leaderboard({ userId, courseId });
+      console.log('🆕 Created new leaderboard entry');
+    }
+    
+    // Add a test module test score
+    leaderboardEntry.updateModuleTestScore('507f1f77bcf86cd799439011', 15, 10, 30);
+    console.log('✅ Added test module test score: 25/30');
+    
+    await leaderboardEntry.save();
+    console.log('💾 Saved leaderboard entry');
+    
+    // Update ranks
+    await updateCourseRanks(courseId);
+    console.log('🔄 Updated course ranks');
+    
+    res.json({ 
+      message: "Test scores added successfully",
+      newScore: leaderboardEntry.overallScore,
+      breakdown: {
+        lessonScore: leaderboardEntry.totalLessonScore,
+        moduleTestScore: leaderboardEntry.totalModuleTestScore,
+        finalExamScore: leaderboardEntry.totalFinalExamScore,
+        skillTestFinalExamScore: leaderboardEntry.totalSkillTestFinalExamScore
+      }
+    });
+  } catch (err) {
+    console.error('Error adding test scores:', err);
+    res.status(500).json({ message: "Error adding test scores", error: err.message });
+  }
+};
+
+// Update leaderboard for SkillTest final exam completion
+const updateSkillTestFinalExamScore = async (req, res) => {
+  try {
+    const { userId, courseId, skillTestId, attemptId, score, maxScore: skillTestMaxScore, percentage, passed, timeSpent } = req.body;
+
+    console.log('🎯 Updating SkillTest final exam score for leaderboard:', {
+      userId,
+      courseId,
+      skillTestId,
+      attemptId,
+      score,
+      maxScore: skillTestMaxScore,
+      percentage,
+      passed,
+      timeSpent
+    });
+
+    // Validate that the skill test exists and is a final exam
+    const skillTest = await SkillTest.findById(skillTestId);
+    if (!skillTest) {
+      return res.status(404).json({ message: "Skill test not found" });
+    }
+
+    if (!skillTest.isFinalExam) {
+      return res.status(400).json({ message: "Skill test is not a final exam" });
+    }
+
+    // Verify the skill test belongs to the course
+    if (skillTest.courseId.toString() !== courseId.toString()) {
+      return res.status(400).json({ message: "Skill test does not belong to the specified course" });
+    }
+
+    let leaderboardEntry = await Leaderboard.findOne({ userId, courseId });
+    
+    if (!leaderboardEntry) {
+      leaderboardEntry = new Leaderboard({ userId, courseId });
+    }
+
+    // Update the SkillTest final exam score
+    leaderboardEntry.updateSkillTestFinalExamScore(skillTestId, attemptId, score, skillTestMaxScore, percentage, passed, timeSpent);
+
+    await leaderboardEntry.save();
+
+    // Update ranks for all users in this course
+    await updateCourseRanks(courseId);
+
+    console.log('✅ SkillTest final exam score updated successfully');
+
+    res.json({ 
+      message: "SkillTest final exam score updated successfully", 
+      newScore: leaderboardEntry.overallScore,
+      breakdown: {
+        lessonScore: leaderboardEntry.totalLessonScore,
+        moduleTestScore: leaderboardEntry.totalModuleTestScore,
+        finalExamScore: leaderboardEntry.totalFinalExamScore,
+        skillTestFinalExamScore: leaderboardEntry.totalSkillTestFinalExamScore
+      }
+    });
+  } catch (err) {
+    console.error('Error updating SkillTest final exam score:', err);
+    res.status(500).json({ message: "Error updating SkillTest final exam score", error: err.message });
+  }
+};
+
+// Manual rank refresh endpoint (for debugging)
+const refreshCourseRanks = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    console.log(`🔄 Manually refreshing ranks for course: ${courseId}`);
+    
+    await updateCourseRanks(courseId);
+    
+    // Get updated leaderboard to verify
+    const updatedLeaderboard = await Leaderboard.find({ courseId })
+      .populate('userId', 'name')
+      .sort({ overallScore: -1 });
+    
+    console.log('📊 Updated leaderboard:', updatedLeaderboard.map(entry => ({
+      name: entry.userId.name,
+      rank: entry.rank,
+      score: entry.overallScore
+    })));
+    
+    res.json({ 
+      message: "Ranks refreshed successfully",
+      leaderboard: updatedLeaderboard.map(entry => ({
+        name: entry.userId.name,
+        rank: entry.rank,
+        score: entry.overallScore
+      }))
+    });
+  } catch (err) {
+    console.error('Error refreshing course ranks:', err);
+    res.status(500).json({ message: "Error refreshing ranks", error: err.message });
   }
 };
 
@@ -351,5 +562,8 @@ module.exports = {
   getCourseLeaderboard,
   getUserCourseRank,
   getUserCourseStats,
-  updateUserCourseScore
+  updateUserCourseScore,
+  addTestScores,
+  updateSkillTestFinalExamScore,
+  refreshCourseRanks
 };
