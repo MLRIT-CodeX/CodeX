@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import Editor from "@monaco-editor/react";
+import MonacoCodeEditor from "../components/MonacoCodeEditor";
 import { 
   Play, 
   Pause, 
@@ -38,13 +38,13 @@ const LessonPage = () => {
   const [courseTitle, setCourseTitle] = useState("");
   const [topicTitle, setTopicTitle] = useState("");
   const [code, setCode] = useState("");
-  const [customInput, setCustomInput] = useState("");
   const [output, setOutput] = useState("");
   const [language, setLanguage] = useState("cpp");
+  
+  // Code persistence per step
+  const [stepCodes, setStepCodes] = useState({});
   const [verdict, setVerdict] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const [showConsole, setShowConsole] = useState(false);
-  const [activeConsoleTab, setActiveConsoleTab] = useState('output');
   const [activeTab, setActiveTab] = useState('theory');
   const [leftWidth, setLeftWidth] = useState(40);
   const [executionError, setExecutionError] = useState("");
@@ -57,6 +57,7 @@ const LessonPage = () => {
     cpp: 54,
     python: 71,
     java: 62,
+    javascript: 63
   };
   
   const boilerplate = {
@@ -72,6 +73,7 @@ int main() {
         // your code here
     }
 }`,
+    javascript: `// your code here`
   };
   
   const isModifiedRef = useRef(false);
@@ -357,13 +359,6 @@ int main() {
     }
   }, [language]);
 
-  // Initialize custom input with sample input from current challenge
-  useEffect(() => {
-    const currentStep = getCurrentStep();
-    if (currentStep?.type === 'coding' && currentStep.content?.sampleInput) {
-      setCustomInput(currentStep.content.sampleInput);
-    }
-  }, [currentStep, steps]);
 
   // Handle tab switching based on step type
   useEffect(() => {
@@ -375,10 +370,42 @@ int main() {
     }
   }, [currentStep, steps]);
 
-  // Handle code execution with Judge0
+  // Auto-load saved code when step changes
+  useEffect(() => {
+    const currentStepData = getCurrentStep();
+    if (currentStepData?.type === 'coding') {
+      // Load saved code for this step or use boilerplate
+      const savedCode = stepCodes[currentStep];
+      
+      if (savedCode) {
+        // Handle both string and object formats
+        if (typeof savedCode === 'string') {
+          setCode(savedCode);
+        } else if (typeof savedCode === 'object' && savedCode.code) {
+          setCode(savedCode.code);
+          if (savedCode.language) {
+            setLanguage(savedCode.language);
+          }
+        } else {
+          const boilerplateCode = boilerplate[language] || '';
+          setCode(boilerplateCode);
+        }
+      } else {
+        const boilerplateCode = boilerplate[language] || '';
+        setCode(boilerplateCode);
+      }
+      
+      // Clear output and verdict when switching steps
+      setOutput("");
+      setVerdict("");
+      setExecutionError("");
+      isModifiedRef.current = false;
+    }
+  }, [currentStep, language, steps]);
+
   const executeCode = async () => {
     if (!code.trim()) {
-      setOutput("Please write some code first.");
+      setOutput("Please enter some code first.");
       return;
     }
 
@@ -388,10 +415,14 @@ int main() {
     setExecutionError("");
 
     try {
+      // Use sample input from current challenge or empty string
+      const currentStep = getCurrentStep();
+      const inputToUse = currentStep?.content?.sampleInput || "";
+      
       const response = await axios.post("http://localhost:2358/submissions", {
         source_code: code,
         language_id: languageMap[language],
-        stdin: customInput,
+        stdin: inputToUse,
       });
 
       const token = response.data.token;
@@ -409,13 +440,36 @@ int main() {
       } while (result.status.id <= 2 && attempts < maxAttempts);
 
       if (result.stdout) {
-        setOutput(result.stdout);
-        setVerdict("Accepted");
-        // Store coding result for progress indicator
-        setStepResults(prev => ({
-          ...prev,
-          [currentStep]: 'correct'
-        }));
+        const actualOutput = result.stdout.trim();
+        setOutput(actualOutput);
+        
+        // Check if there's expected output to compare with
+        const currentStep = getCurrentStep();
+        const expectedOutput = currentStep?.content?.sampleOutput?.trim();
+        
+        if (expectedOutput && actualOutput === expectedOutput) {
+          setVerdict("Accepted");
+          // Store coding result for progress indicator
+          setStepResults(prev => ({
+            ...prev,
+            [currentStep]: 'correct'
+          }));
+        } else if (expectedOutput) {
+          setVerdict("Wrong Answer");
+          // Store coding result for progress indicator
+          setStepResults(prev => ({
+            ...prev,
+            [currentStep]: 'wrong'
+          }));
+        } else {
+          // No expected output to compare, just show that it ran successfully
+          setVerdict("Output Generated");
+          // Store coding result for progress indicator
+          setStepResults(prev => ({
+            ...prev,
+            [currentStep]: 'correct'
+          }));
+        }
       } else if (result.stderr) {
         setOutput(result.stderr);
         setVerdict("Runtime Error");
@@ -476,12 +530,14 @@ int main() {
     setVerdict("");
 
     try {
+      const inputToUse = currentStep.content.sampleInput || "";
+      
       const res = await axios.post(
         "http://localhost:2358/submissions?base64_encoded=false&wait=true",
         {
           language_id: languageMap[language],
           source_code: code,
-          stdin: currentStep.content.sampleInput || "",
+          stdin: inputToUse,
         },
         { headers: { "Content-Type": "application/json" } }
       );
@@ -797,22 +853,10 @@ int main() {
             </div>
             <div className="course-details">
               <h3 className="course-name">{courseTitle || 'Learn Python Programming'}</h3>
-              <a href="#" className="view-syllabus">View full syllabus</a>
+              <a href={`/courses/${courseId}/syllabus`} className="view-syllabus">View full syllabus</a>
             </div>
           </div>
           
-          {/* Progress Bar */}
-          <div className="sidebar-progress">
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill" 
-                style={{ width: `${isCompleted ? 100 : Math.min(100, Math.round(((currentStep + 1) / totalSteps) * 100))}%` }}
-              ></div>
-            </div>
-            <div className="progress-text">
-              {Math.round(((currentStep + 1) / totalSteps) * 100)}% Completed
-            </div>
-          </div>
           
           {/* Course Topics and Lessons List */}
           <div className="modules-list">
@@ -1124,10 +1168,12 @@ int main() {
                             setOutput("");
                             setVerdict("");
                           }}
+                          className="language-selector"
                         >
                           <option value="cpp">C++</option>
                           <option value="python">Python</option>
                           <option value="java">Java</option>
+                          <option value="javascript">JavaScript</option>
                         </select>
                         <div className="toolbar-buttons">
                           <button 
@@ -1137,100 +1183,62 @@ int main() {
                           >
                             {isRunning ? 'Running...' : 'Run'}
                           </button>
-                          <button 
-                            className="submit-button"
-                            onClick={handleSubmit} 
-                            disabled={isRunning}
-                          >
-                            {isRunning ? 'Submitting...' : 'Submit'}
-                          </button>
                         </div>
                       </div>
 
                       <div className="monaco-editor-container">
-                        <Editor
-                          height="100%"
-                          theme="vs-dark"
-                          language={language === 'cpp' ? 'cpp' : language}
-                          value={code}
+                        <MonacoCodeEditor
+                          key={`step-${currentStep}-${language}`}
+                          language={language}
+                          allowedLanguages={course?.language ? [course.language] : course?.programmingLanguage ? [course.programmingLanguage] : ['python']}
+                          onLanguageChange={(newLang) => {
+                            setLanguage(newLang);
+                            isModifiedRef.current = false;
+                            setOutput("");
+                            setVerdict("");
+                          }}
+                          value={code || ''}
                           onChange={(val) => {
-                            setCode(val);
+                            setCode(val || '');
+                            // Auto-save code for this specific step
+                            setStepCodes(prev => ({
+                              ...prev,
+                              [currentStep]: {
+                                code: val || '',
+                                language: language
+                              }
+                            }));
                             isModifiedRef.current = true;
                           }}
-                          options={{ 
-                            fontSize: 14,
-                            minimap: { enabled: false },
-                            scrollBeyondLastLine: false,
-                            automaticLayout: true,
-                            lineNumbers: 'on',
-                            roundedSelection: false,
-                            scrollbar: {
-                              vertical: 'visible',
-                              horizontal: 'visible',
-                              useShadows: false,
-                              verticalScrollbarSize: 8,
-                              horizontalScrollbarSize: 8
-                            }
-                          }}
+                          height="100%"
+                          showLanguageSelector={false}
                         />
                       </div>
 
-                      <div className="input-section">
-                        <div className="input-header">
-                          <h3>Custom Input</h3>
+                      <div className="output-section">
+                        <div className="output-header">
+                          <h3>Output</h3>
                         </div>
-                        <textarea
-                          className="input-box"
-                          value={customInput}
-                          onChange={(e) => setCustomInput(e.target.value)}
-                          placeholder="Enter custom input here"
-                        />
-                      </div>
-
-                      <div className={`output-console ${showConsole ? 'visible' : ''}`}>
-                        <div className="console-header" onClick={() => setShowConsole(!showConsole)}>
-                          <h4>Console</h4>
-                          <button className="console-close" onClick={(e) => {
-                            e.stopPropagation();
-                            setShowConsole(false);
-                          }}>×</button>
+                        <div className="output-block">
+                          <pre className="output-text">{output || "Click 'Run' to see output here"}</pre>
                         </div>
-                        <div className="console-content">
-                          <div className="console-tabs">
-                            <button 
-                              className={`console-tab ${activeConsoleTab === 'output' ? 'active' : ''}`}
-                              onClick={() => setActiveConsoleTab('output')}
-                            >
-                              Output
-                            </button>
-                            <button 
-                              className={`console-tab ${activeConsoleTab === 'input' ? 'active' : ''}`}
-                              onClick={() => setActiveConsoleTab('input')}
-                            >
-                              Input
-                            </button>
+                        {verdict && (
+                          <div className={`verdict-block ${
+                            verdict.includes('✅') || verdict.includes('Correct') || verdict.includes('Accepted') 
+                              ? 'accepted' 
+                              : verdict.includes('Wrong Answer') 
+                                ? 'wrong-answer'
+                                : verdict.includes('Output Generated')
+                                  ? 'output-generated'
+                                  : 'error'
+                          }`}>
+                            {verdict.includes('✅') || verdict.includes('Correct') || verdict.includes('Accepted') 
+                              ? '✅ Accepted' 
+                              : verdict.includes('Wrong Answer')
+                                ? '❌ Wrong Answer'
+                                : verdict}
                           </div>
-                          <div className="console-body">
-                            {activeConsoleTab === 'output' ? (
-                              <div className="output-content">
-                                <pre className="output-text">{output || "Click 'Run' to see output here"}</pre>
-                                {verdict && (
-                                  <div className={`verdict ${verdict.includes('✅') ? 'success' : 'error'}`}>
-                                    {verdict}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <textarea
-                                className="console-input"
-                                value={customInput}
-                                onChange={(e) => setCustomInput(e.target.value)}
-                                placeholder="Enter custom input here"
-                                rows={5}
-                              />
-                            )}
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>

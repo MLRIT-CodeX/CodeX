@@ -22,7 +22,7 @@ import {
   Wifi,
   Battery
 } from 'lucide-react';
-import Editor from '@monaco-editor/react';
+import MonacoCodeEditor from '../components/MonacoCodeEditor';
 
 const FinalExamPage = () => {
   const { courseId } = useParams();
@@ -49,8 +49,13 @@ const FinalExamPage = () => {
   const [notificationMessage, setNotificationMessage] = useState('');
   const [allQuestions, setAllQuestions] = useState([]);
   const [codingAnswers, setCodingAnswers] = useState({});
-  const [code, setCode] = useState('');
+  const [code, setCodeState] = useState('');
   const [language, setLanguage] = useState('python');
+  
+  // Safe setCode function that ensures code is always a string
+  const setCode = (value) => {
+    setCodeState(typeof value === 'string' ? value : (value?.code || ''));
+  };
   const [output, setOutput] = useState('');
   const [showOutput, setShowOutput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -82,21 +87,89 @@ const FinalExamPage = () => {
   const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [verdict, setVerdict] = useState("");
+  const [executionError, setExecutionError] = useState("");
+  
+  // Language mapping and boilerplate - same as LessonPage
+  const languageMap = {
+    cpp: 54,
+    python: 71,
+    java: 62,
+    javascript: 63
+  };
+  
+  const boilerplate = {
+    cpp: `#include <iostream>
+using namespace std;
+int main() {
+    // your code here
+    return 0;
+}`,
+    python: `# your code here`,
+    java: `public class Main {
+    public static void main(String[] args) {
+        // your code here
+    }
+}`,
+    javascript: `// your code here`
+  };
   
   // Refs
   const containerRef = useRef(null);
   const verticalContainerRef = useRef(null);
-  const examRef = useRef(null);
   const timerRef = useRef(null);
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
+  const examRef = useRef(null);
 
   const token = localStorage.getItem('token');
-  const userId = localStorage.getItem('userId');
+  const userId = localStorage.getItem("userId");
+  const isModifiedRef = useRef(false);
 
+  // Reset editor state when switching to a different coding question
+  useEffect(() => {
+    const currentQ = allQuestions[currentQuestion];
+    if (currentQ?.type === 'coding') {
+      // Reset output and verdict when switching questions (but keep output box visible)
+      setOutput("");
+      setVerdict("");
+      setExecutionError("");
+      setShowOutput(true); // Keep output visible for coding questions
+      
+      // Auto-load saved code for this specific question or use boilerplate
+      const savedCode = codingAnswers[currentQuestion];
+      
+      if (savedCode) {
+        // Handle both string and object formats
+        if (typeof savedCode === 'string') {
+          setCode(savedCode);
+        } else if (typeof savedCode === 'object' && savedCode.code) {
+          setCode(savedCode.code);
+          if (savedCode.language) {
+            setLanguage(savedCode.language);
+          }
+        } else {
+          const boilerplateCode = boilerplate[language] || '';
+          setCode(boilerplateCode);
+        }
+      } else {
+        const boilerplateCode = boilerplate[language] || '';
+        setCode(boilerplateCode);
+      }
+      isModifiedRef.current = false;
+    } else {
+      // Hide output for non-coding questions
+      setShowOutput(false);
+    }
+  }, [currentQuestion, allQuestions]);
+
+  // Fetch exam data on component mount
   useEffect(() => {
     fetchExamData();
-    collectSystemInformation();
+  }, [courseId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       cleanupSecurityListeners();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -104,7 +177,7 @@ const FinalExamPage = () => {
         webcamStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [courseId]);
+  }, [webcamStream]);
 
   // Setup security suite only when exam starts
   useEffect(() => {
@@ -655,23 +728,13 @@ const FinalExamPage = () => {
         console.log('Stopping webcam stream...');
         webcamStream.getTracks().forEach(track => {
           track.stop();
-          console.log('Stopped track:', track.kind);
         });
-        setWebcamStream(null);
       }
       
-      // Calculate results locally first
+      // Calculate local results first
       const localResults = await calculateResults();
       
-      // Stop timer and cleanup
-      if (timerRef.current) clearInterval(timerRef.current);
-      
-      // Cleanup security and media
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      }
-      
-      // Submit to backend and get server results
+      // Submit to backend and get response
       const backendResponse = await submitToBackend(autoSubmit, localResults);
       
       console.log('Using backend response for results:', backendResponse);
@@ -726,10 +789,21 @@ const FinalExamPage = () => {
         if (question.type === 'mcq' && savedAnswers[index] !== undefined) {
           answers[question.originalIndex] = savedAnswers[index];
         } else if (question.type === 'coding' && codingAnswers[index]?.code) {
-          codingSubmissions[question.originalIndex] = {
-            code: codingAnswers[index].code,
-            language: codingAnswers[index].language || 'python'
-          };
+          // Only submit if user actually wrote meaningful code (not just boilerplate)
+          const userCode = codingAnswers[index];
+          const hasActualCode = userCode.code && 
+            userCode.code.trim().length > 0 && 
+            userCode.code.trim() !== (boilerplate[userCode.language] || boilerplate['python'] || '').trim() &&
+            !userCode.code.includes('// your code here') &&
+            !userCode.code.includes('# your code here') &&
+            userCode.code.trim().length > 20;
+            
+          if (hasActualCode) {
+            codingSubmissions[question.originalIndex] = {
+              code: userCode.code,
+              language: userCode.language || 'python'
+            };
+          }
         }
       });
       
@@ -856,7 +930,15 @@ const FinalExamPage = () => {
       const questionIndex = allQuestions.findIndex(q => q === question);
       const userCode = codingAnswers[questionIndex];
       
-      if (userCode && userCode.code && userCode.code.trim().length > 10) {
+      // Check if user actually wrote code (not just boilerplate)
+      const hasActualCode = userCode && userCode.code && 
+        userCode.code.trim().length > 0 && 
+        userCode.code.trim() !== (boilerplate[userCode.language] || boilerplate['python'] || '').trim() &&
+        !userCode.code.includes('// your code here') &&
+        !userCode.code.includes('# your code here') &&
+        userCode.code.trim().length > 20; // Minimum meaningful code length
+        
+      if (hasActualCode) {
         codingAttempted++;
         
         try {
@@ -886,11 +968,12 @@ const FinalExamPage = () => {
           }
           
           const isCorrect = allTestsPassed && question.testCases && question.testCases.length > 0;
+          const verdict = isCorrect ? 'Accepted' : 'Wrong Answer';
           
           codingResults.push({
-            verdict: isCorrect ? 'Accepted' : 'Wrong Answer',
+            verdict: verdict,
             output: executionOutput,
-            marks: question.marks || 25
+            marks: isCorrect ? (question.marks || 25) : 0  // Only assign marks if Accepted
           });
           
           if (isCorrect) {
@@ -903,14 +986,14 @@ const FinalExamPage = () => {
           codingResults.push({
             verdict: 'Runtime Error',
             output: 'Code execution failed',
-            marks: question.marks || 25
+            marks: 0  // No marks for runtime errors
           });
         }
       } else {
         codingResults.push({
           verdict: 'Not Attempted',
-          output: 'No code submitted',
-          marks: question.marks || 25
+          output: 'No code submitted or only boilerplate code',
+          marks: 0  // No marks for not attempted
         });
       }
     }
@@ -923,6 +1006,16 @@ const FinalExamPage = () => {
     const maxScore = (mcqQuestions.reduce((sum, q) => sum + (q.marks || 5), 0)) + 
                      (codingQuestions.reduce((sum, q) => sum + (q.marks || 25), 0));
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+    
+    // Debug logging to track scoring
+    console.log('📊 Final Score Calculation:', {
+      mcqScore,
+      codingScore,
+      totalScore,
+      mcqAttempted,
+      codingAttempted,
+      codingResults: codingResults.map(r => ({ verdict: r.verdict, marks: r.marks }))
+    });
     
     return {
       correctCount,
@@ -949,42 +1042,101 @@ const FinalExamPage = () => {
     await handleSubmitTest(true);
   };
 
-  // Language mapping for Judge0 API - same as ModuleTestPage
-  const languageMap = {
-    cpp: 54,
-    python: 71,
-    java: 62,
-  };
-
-  const handleRunCode = async () => {
-    if (!code.trim()) {
-      setOutput("Please enter some code before running.");
+  // Enhanced code execution function - similar to LessonPage
+  const executeCode = async () => {
+    console.log("Execute code called with:", { code, language, showOutput });
+    
+    if (!code || !code.trim()) {
+      setOutput("Please write some code first.");
       setShowOutput(true);
+      console.log("No code provided, showing message");
       return;
     }
+
     setIsRunning(true);
-    setOutput("Running...");
+    setOutput("Running code...");
+    setVerdict("");
+    setExecutionError("");
     setShowOutput(true);
+    
+    console.log("Set running state and output, showOutput:", true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:2358/submissions?base64_encoded=false&wait=true",
-        {
-          language_id: languageMap[language],
-          source_code: code,
-          stdin: customInput || "",
-        },
-        { headers: { "Content-Type": "application/json" } }
+      // Get current coding question for comparison
+      const currentCodingQuestion = allQuestions.find((q, index) => 
+        index === currentQuestion && q.type === 'coding'
       );
+      const inputToUse = currentCodingQuestion?.sampleInput || customInput || "";
+      
+      console.log("Sending request to Judge0:", {
+        source_code: code,
+        language_id: languageMap[language],
+        stdin: inputToUse,
+      });
+      
+      const response = await axios.post("http://localhost:2358/submissions", {
+        source_code: code,
+        language_id: languageMap[language],
+        stdin: inputToUse,
+      });
+      
+      console.log("Judge0 response:", response.data);
 
-      const { stdout, stderr, compile_output } = res.data;
-      const finalOutput = stdout || stderr || compile_output || "No output";
-      setOutput(finalOutput.trim());
+      const token = response.data.token;
+      
+      // Poll for result
+      let result;
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      do {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const resultResponse = await axios.get(`http://localhost:2358/submissions/${token}`);
+        result = resultResponse.data;
+        attempts++;
+      } while (result.status.id <= 2 && attempts < maxAttempts);
+
+      if (result.stdout) {
+        const actualOutput = result.stdout.trim();
+        setOutput(actualOutput);
+        
+        // Check if there's expected output to compare with
+        const expectedOutput = currentCodingQuestion?.sampleOutput?.trim();
+        
+        if (expectedOutput && actualOutput === expectedOutput) {
+          setVerdict("Accepted");
+        } else if (expectedOutput) {
+          setVerdict("Wrong Answer");
+        } else {
+          setVerdict("Output Generated");
+        }
+      } else if (result.stderr) {
+        setOutput(result.stderr);
+        setVerdict("Runtime Error");
+        setExecutionError(result.stderr);
+      } else if (result.compile_output) {
+        setOutput(result.compile_output);
+        setVerdict("Compilation Error");
+        setExecutionError(result.compile_output);
+      } else {
+        setOutput("No output");
+        setVerdict("No Output");
+      }
       
       addSecurityViolation('Code executed during final exam');
-    } catch (err) {
-      console.error("Run Error:", err);
-      setOutput("Error running code");
+    } catch (error) {
+      console.error("Execution error:", error);
+      console.error("Error details:", error.response?.data || error.message);
+      
+      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        setOutput("❌ Cannot connect to Judge0 server. Please make sure the Judge0 server is running on localhost:2358");
+      } else if (error.response?.status === 422) {
+        setOutput("❌ Invalid submission data. Please check your code and try again.");
+      } else {
+        setOutput(`❌ Error executing code: ${error.message}`);
+      }
+      setExecutionError("Connection error");
+      setVerdict("Error");
     } finally {
       setIsRunning(false);
     }
@@ -1002,6 +1154,7 @@ const FinalExamPage = () => {
   const handleSaveAnswer = () => {
     const currentQuestionData = allQuestions[currentQuestion];
     
+    // Only handle MCQ manual saving - coding is auto-saved
     if (currentQuestionData?.type === 'mcq' && selectedAnswers[currentQuestion] !== undefined) {
       setSavedAnswers(prev => ({
         ...prev,
@@ -1015,25 +1168,9 @@ const FinalExamPage = () => {
         setShowNotification(false);
         setIsAnswerSaved(false);
       }, 3000);
-    } else if (currentQuestionData?.type === 'coding' && code.trim()) {
-      setCodingAnswers(prev => ({
-        ...prev,
-        [currentQuestion]: {
-          code: code,
-          language: language
-        }
-      }));
-      setIsAnswerSaved(true);
-      setShowNotification(true);
       
-      // Hide notification after 3 seconds
-      setTimeout(() => {
-        setShowNotification(false);
-        setIsAnswerSaved(false);
-      }, 3000);
+      addSecurityViolation(`MCQ answer saved for question ${currentQuestion + 1}`);
     }
-    
-    addSecurityViolation(`Answer saved for question ${currentQuestion + 1}`);
   };
 
   const getInitialCode = () => {
@@ -1045,19 +1182,7 @@ def solution():
     pass`;
   };
 
-  // Load saved code when switching to coding questions
-  useEffect(() => {
-    const currentQuestionData = allQuestions[currentQuestion];
-    if (currentQuestionData?.type === 'coding') {
-      const savedCode = codingAnswers[currentQuestion];
-      if (savedCode) {
-        setCode(savedCode.code);
-        setLanguage(savedCode.language);
-      } else {
-        setCode(getInitialCode());
-      }
-    }
-  }, [currentQuestion, allQuestions]);
+  // This useEffect was removed to avoid conflicts with the main useEffect above
 
   // Resizer functionality - same as ModuleTestPage
   const startDrag = (e) => {
@@ -1545,25 +1670,20 @@ def solution():
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
+                  className="language-selector"
                 >
                   <option value="python">Python</option>
                   <option value="cpp">C++</option>
                   <option value="java">Java</option>
+                  <option value="javascript">JavaScript</option>
                 </select>
                 <div className="toolbar-buttons">
                   <button 
                     className="run-button"
-                    onClick={handleRunCode} 
+                    onClick={executeCode} 
                     disabled={isRunning}
                   >
                     {isRunning ? 'Running...' : 'Run'}
-                  </button>
-                  <button
-                    onClick={handleSaveAnswer}
-                    className={`save-btn ${isAnswerSaved ? 'saved' : ''}`}
-                    disabled={!code.trim()}
-                  >
-                    {isAnswerSaved ? '✓ Saved' : 'Save Code'}
                   </button>
                 </div>
               </div>
@@ -1571,40 +1691,30 @@ def solution():
               {/* Code Editor Area */}
               <div className="code-editor-area" style={{ height: `${codeHeight}%` }}>
                 <div className="monaco-editor-container">
-                  <Editor
-                    height="100%"
-                    width="100%"
+                  <MonacoCodeEditor
+                    key={`question-${currentQuestion}-${language}`}
                     language={language}
-                    theme="vs-dark"
-                    value={codingAnswers[currentQuestion - exam.mcqs.length] || ''}
+                    allowedLanguages={course?.language ? [course.language] : course?.programmingLanguage ? [course.programmingLanguage] : ['python']}
+                    onLanguageChange={(newLang) => {
+                      setLanguage(newLang);
+                      setOutput("");
+                      setVerdict("");
+                    }}
+                    value={code}
                     onChange={(value) => {
-                      const questionIndex = currentQuestion - exam.mcqs.length;
+                      setCode(value || '');
+                      // Auto-save code for this specific question
                       setCodingAnswers(prev => ({
                         ...prev,
-                        [questionIndex]: value
-                      }));
-                    }}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 14,
-                      lineNumbers: 'on',
-                      roundedSelection: false,
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                      wordWrap: 'on'
-                    }}
-                    beforeMount={(monaco) => {
-                      // Disable web workers to avoid CDN issues
-                      window.MonacoEnvironment = {
-                        getWorker: () => {
-                          return new Worker(
-                            URL.createObjectURL(
-                              new Blob([''], { type: 'application/javascript' })
-                            )
-                          );
+                        [currentQuestion]: {
+                          code: value || '',
+                          language: language
                         }
-                      };
+                      }));
+                      isModifiedRef.current = true;
                     }}
+                    height="100%"
+                    showLanguageSelector={false}
                   />
                 </div>
               </div>
@@ -1614,12 +1724,33 @@ def solution():
                 <div className="vertical-resizer" onMouseDown={startVerticalDrag} />
               )}
 
-              {/* Output Section */}
+              {/* Output Section - Exactly like LessonPage */}
               {showOutput && (
                 <div className="output-area" style={{ height: `${100 - codeHeight}%` }}>
                   <div className="output-section">
-                    <h4>Output</h4>
-                    <pre className="output-box">{output}</pre>
+                    <div className="output-header">
+                      <h3>Output</h3>
+                    </div>
+                    <div className="output-block">
+                      <pre className="output-text">{output || "Click 'Run' to see output here"}</pre>
+                    </div>
+                    {verdict && (
+                      <div className={`verdict-block ${
+                        verdict.includes('✅') || verdict.includes('Correct') || verdict.includes('Accepted') 
+                          ? 'accepted' 
+                          : verdict.includes('Wrong Answer') 
+                            ? 'wrong-answer'
+                            : verdict.includes('Output Generated')
+                              ? 'output-generated'
+                              : 'error'
+                      }`}>
+                        {verdict.includes('✅') || verdict.includes('Correct') || verdict.includes('Accepted') 
+                          ? '✅ Accepted' 
+                          : verdict.includes('Wrong Answer')
+                            ? '❌ Wrong Answer'
+                            : verdict}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

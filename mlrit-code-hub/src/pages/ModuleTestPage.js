@@ -2,15 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Clock, ArrowLeft, ArrowRight, CheckCircle, Code, BookOpen, Award } from 'lucide-react';
-import Editor from '@monaco-editor/react';
+import MonacoCodeEditor from '../components/MonacoCodeEditor';
 import ModuleTestResultPage from '../components/ModuleTestResultPage';
 import './ModuleTestPage.css';
 
 const ModuleTestPage = () => {
   const { courseId, topicId } = useParams();
   const navigate = useNavigate();
+
+  // Error boundary state
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [topic, setTopic] = useState(null);
   const [moduleTest, setModuleTest] = useState(null);
+  const [course, setCourse] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
@@ -33,19 +38,141 @@ const ModuleTestPage = () => {
   const [output, setOutput] = useState('');
   const [showOutput, setShowOutput] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [verdict, setVerdict] = useState('');
   const [customInput, setCustomInput] = useState('');
   const [leftWidth, setLeftWidth] = useState(50);
   const [codeHeight, setCodeHeight] = useState(60); // Percentage for code area height
   const [testStartTime, setTestStartTime] = useState(null);
   const containerRef = useRef(null);
   const verticalContainerRef = useRef(null);
+  const isModifiedRef = useRef(false);
 
   const token = localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
 
+  // Boilerplate code templates - same as LessonPage
+  const boilerplate = {
+    cpp: `#include <iostream>
+using namespace std;
+int main() {
+    // your code here
+    return 0;
+}`,
+    python: `# your code here`,
+    java: `public class Main {
+    public static void main(String[] args) {
+        // your code here
+    }
+}`,
+    javascript: `// your code here`
+  };
+
   useEffect(() => {
-    fetchModuleTest();
+    try {
+      fetchCourseAndModuleTest();
+    } catch (error) {
+      console.error('Error in fetchCourseAndModuleTest useEffect:', error);
+      setHasError(true);
+      setErrorMessage('Failed to initialize test');
+    }
   }, [courseId, topicId]);
+
+  const fetchCourseAndModuleTest = async () => {
+    try {
+      // Fetch both course and module test data
+      const [courseResponse, testResponse] = await Promise.all([
+        axios.get(`http://localhost:5000/api/courses/${courseId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`http://localhost:5000/api/courses/${courseId}/topics/${topicId}/test`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      // Set course data
+      setCourse(courseResponse.data);
+
+      // Process test data (existing logic)
+      const testData = testResponse.data;
+      
+      if (!testData) {
+        throw new Error('No test data received');
+      }
+      
+      setTopic({ title: testData.topicTitle || 'Module Test' });
+      setModuleTest({
+        mcqs: Array.isArray(testData.mcqs) ? testData.mcqs : [],
+        codeChallenges: Array.isArray(testData.codeChallenges) ? testData.codeChallenges : [],
+        totalMarks: testData.totalMarks || 100
+      });
+      
+      const mcqs = Array.isArray(testData.mcqs) ? testData.mcqs : [];
+      const codeChallenges = Array.isArray(testData.codeChallenges) ? testData.codeChallenges : [];
+      
+      try {
+        const combinedQuestions = [
+          ...mcqs.map((mcq, index) => {
+            if (!mcq || typeof mcq !== 'object') {
+              console.warn('Invalid MCQ at index:', index, mcq);
+              return null;
+            }
+            return { ...mcq, type: 'mcq', originalIndex: index };
+          }).filter(Boolean),
+          ...codeChallenges.map((challenge, index) => {
+            if (!challenge || typeof challenge !== 'object') {
+              console.warn('Invalid coding challenge at index:', index, challenge);
+              return null;
+            }
+            return { ...challenge, type: 'coding', originalIndex: index };
+          }).filter(Boolean)
+        ];
+        
+        console.log('Combined questions:', combinedQuestions);
+        
+        if (!Array.isArray(combinedQuestions) || combinedQuestions.length === 0) {
+          throw new Error('No valid questions found');
+        }
+        
+        setAllQuestions(combinedQuestions);
+      } catch (mapError) {
+        console.error('Error processing questions:', mapError);
+        setError('Failed to process test questions');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching course and module test:', err);
+      setError('Failed to load test data');
+      setHasError(true);
+      setErrorMessage(err.message || 'Unknown error occurred');
+      setLoading(false);
+    }
+  };
+
+  // Global error handler
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error('Global error caught:', event.error);
+      setHasError(true);
+      setErrorMessage('An unexpected error occurred');
+    };
+
+    const handleUnhandledRejection = (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      setHasError(true);
+      setErrorMessage('An unexpected error occurred');
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   useEffect(() => {
     if (moduleTest && !showResults) {
@@ -63,36 +190,6 @@ const ModuleTestPage = () => {
     }
   }, [moduleTest, showResults]);
 
-  const fetchModuleTest = async () => {
-    try {
-      const response = await axios.get(
-        `http://localhost:5000/api/courses/${courseId}/topics/${topicId}/test`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Backend returns: { topicTitle, totalMarks, mcqs, codeChallenges }
-      const testData = response.data;
-      
-      setTopic({ title: testData.topicTitle });
-      setModuleTest({
-        mcqs: testData.mcqs || [],
-        codeChallenges: testData.codeChallenges || [],
-        totalMarks: testData.totalMarks
-      });
-      
-      // Combine MCQs and coding challenges into unified question list
-      const combinedQuestions = [
-        ...(testData.mcqs || []).map((mcq, index) => ({ ...mcq, type: 'mcq', originalIndex: index })),
-        ...(testData.codeChallenges || []).map((challenge, index) => ({ ...challenge, type: 'coding', originalIndex: index }))
-      ];
-      setAllQuestions(combinedQuestions);
-    } catch (err) {
-      console.error('Error fetching module test:', err);
-      setError('Failed to load module test');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAnswerSelect = (questionIndex, optionIndex) => {
     setSelectedAnswers(prev => ({
@@ -148,11 +245,14 @@ const ModuleTestPage = () => {
   const handleRunCode = async () => {
     if (!code.trim()) {
       setOutput("Please enter some code before running.");
+      setVerdict("");
       setShowOutput(true);
       return;
     }
+    
     setIsRunning(true);
     setOutput("Running...");
+    setVerdict("");
     setShowOutput(true);
 
     try {
@@ -166,12 +266,99 @@ const ModuleTestPage = () => {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      const { stdout, stderr, compile_output } = res.data;
-      const finalOutput = stdout || stderr || compile_output || "No output";
-      setOutput(finalOutput.trim());
+      const { stdout, stderr, compile_output, status } = res.data;
+      
+      if (stdout) {
+        const actualOutput = stdout.trim();
+        setOutput(actualOutput);
+        
+        // Check if there's expected output to compare with
+        const currentQuestionData = allQuestions[currentQuestion];
+        const expectedOutput = currentQuestionData?.sampleOutput?.trim();
+        
+        let finalVerdict;
+        if (expectedOutput && actualOutput === expectedOutput) {
+          finalVerdict = "Accepted";
+        } else if (expectedOutput) {
+          finalVerdict = "Wrong Answer";
+        } else {
+          finalVerdict = "Output Generated";
+        }
+        
+        setVerdict(finalVerdict);
+        
+        // Save verdict in coding answers for scoring
+        setCodingAnswers(prev => ({
+          ...prev,
+          [currentQuestion]: {
+            ...prev[currentQuestion],
+            verdict: finalVerdict,
+            hasRun: true,
+            lastRunOutput: actualOutput
+          }
+        }));
+      } else if (stderr) {
+        const errorVerdict = "Runtime Error";
+        setOutput(stderr.trim());
+        setVerdict(errorVerdict);
+        
+        // Save error verdict
+        setCodingAnswers(prev => ({
+          ...prev,
+          [currentQuestion]: {
+            ...prev[currentQuestion],
+            verdict: errorVerdict,
+            hasRun: true,
+            lastRunOutput: stderr.trim()
+          }
+        }));
+      } else if (compile_output) {
+        const errorVerdict = "Compilation Error";
+        setOutput(compile_output.trim());
+        setVerdict(errorVerdict);
+        
+        // Save compilation error verdict
+        setCodingAnswers(prev => ({
+          ...prev,
+          [currentQuestion]: {
+            ...prev[currentQuestion],
+            verdict: errorVerdict,
+            hasRun: true,
+            lastRunOutput: compile_output.trim()
+          }
+        }));
+      } else {
+        const noOutputVerdict = "No Output";
+        setOutput("No output");
+        setVerdict(noOutputVerdict);
+        
+        // Save no output verdict
+        setCodingAnswers(prev => ({
+          ...prev,
+          [currentQuestion]: {
+            ...prev[currentQuestion],
+            verdict: noOutputVerdict,
+            hasRun: true,
+            lastRunOutput: ""
+          }
+        }));
+      }
     } catch (err) {
       console.error("Run Error:", err);
-      setOutput("Error running code");
+      const connectionErrorVerdict = "Connection Error";
+      setOutput("Error running code. Make sure Judge0 server is running.");
+      setVerdict(connectionErrorVerdict);
+      
+      // Save connection error verdict
+      setCodingAnswers(prev => ({
+        ...prev,
+        [currentQuestion]: {
+          ...prev[currentQuestion],
+          verdict: connectionErrorVerdict,
+          hasRun: true,
+          lastRunOutput: "Connection Error"
+        }
+      }));
     } finally {
       setIsRunning(false);
     }
@@ -181,22 +368,47 @@ const ModuleTestPage = () => {
     const currentQuestionData = allQuestions[currentQuestion];
     if (currentQuestionData?.type !== 'coding') return '';
     
-    return currentQuestionData.initialCode || `# Write your solution here
-def solution():
-    pass`;
+    return currentQuestionData.initialCode || boilerplate[language] || '';
   };
 
-  // Load saved code when switching to coding questions
+  // Auto-load saved code when switching to coding questions
   useEffect(() => {
+    if (!allQuestions || !Array.isArray(allQuestions) || allQuestions.length === 0) {
+      return;
+    }
+    
     const currentQuestionData = allQuestions[currentQuestion];
     if (currentQuestionData?.type === 'coding') {
+      // Load saved code for this specific question or use boilerplate
       const savedCode = codingAnswers[currentQuestion];
+      
       if (savedCode) {
-        setCode(savedCode.code);
-        setLanguage(savedCode.language);
+        // Handle both string and object formats
+        if (typeof savedCode === 'string') {
+          setCode(savedCode);
+        } else if (typeof savedCode === 'object' && savedCode.code) {
+          setCode(savedCode.code);
+          if (savedCode.language) {
+            setLanguage(savedCode.language);
+          }
+        } else {
+          const boilerplateCode = boilerplate[language] || '';
+          setCode(boilerplateCode);
+        }
       } else {
-        setCode(getInitialCode());
+        const boilerplateCode = boilerplate[language] || '';
+        setCode(boilerplateCode);
       }
+      
+      // Show output section for coding questions
+      setShowOutput(true);
+      // Clear previous output and verdict when switching questions
+      setOutput('');
+      setVerdict('');
+      isModifiedRef.current = false;
+    } else {
+      // Hide output for non-coding questions
+      setShowOutput(false);
     }
   }, [currentQuestion, allQuestions]);
 
@@ -249,7 +461,7 @@ def solution():
     if (!moduleTest) return;
 
     // Check if any questions are answered
-    const totalAnswered = Object.keys(savedAnswers).length + Object.keys(codingAnswers).length;
+    const totalAnswered = Number(Object.keys(savedAnswers || {}).length) + Number(Object.keys(codingAnswers || {}).length);
     
     if (totalAnswered === 0) {
       setShowSubmitWarning(true);
@@ -298,7 +510,9 @@ def solution():
           if (userCode && userCode.code && userCode.code.trim()) {
             backendCodingAnswers[index] = {
               code: userCode.code,
-              language: userCode.language || 'python'
+              language: userCode.language || 'python',
+              verdict: userCode.verdict || 'Not Attempted', // Include verdict for scoring
+              hasRun: userCode.hasRun || false // Track if code was executed
             };
           }
         }
@@ -341,7 +555,7 @@ def solution():
       
       // Fallback to local calculation if backend fails
       const fallbackResult = {
-        totalScore: Object.keys(savedAnswers).length + Object.keys(codingAnswers).length,
+        totalScore: Number(Object.keys(savedAnswers || {}).length) + Number(Object.keys(codingAnswers || {}).length),
         totalMarks: moduleTest?.totalMarks || 100,
         percentage: 0,
         correctAnswers: 0,
@@ -470,6 +684,28 @@ def solution():
     }
   };
 
+  // Error boundary
+  if (hasError) {
+    return (
+      <div className="module-test-container">
+        <div className="error-state">
+          <h2>Something went wrong</h2>
+          <p>{errorMessage}</p>
+          <button onClick={() => {
+            setHasError(false);
+            setErrorMessage('');
+            window.location.reload();
+          }} className="back-btn">
+            Reload Page
+          </button>
+          <button onClick={() => navigate(-1)} className="back-btn">
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Show enhanced results page if available
   if (showDetailedResults && testResults) {
     return (
@@ -498,7 +734,7 @@ def solution():
     );
   }
 
-  if (loading || !moduleTest) {
+  if (loading || !allQuestions || allQuestions.length === 0) {
     return (
       <div className="module-test-container">
         <div className="loading-state">
@@ -659,7 +895,8 @@ def solution():
     );
   }
 
-  if (!allQuestions || allQuestions.length === 0) {
+  // Safety check for allQuestions
+  if (!allQuestions || !Array.isArray(allQuestions) || allQuestions.length === 0) {
     return (
       <div className="module-test-container">
         <div className="error-state">
@@ -673,23 +910,24 @@ def solution():
   }
 
   // Main component return
-  return (
-    <div className="module-test-container">
-      {/* Custom Test Navbar */}
-      <div className="test-navbar">
-        <div className="navbar-left">
-          <div className="test-status">
-            <span className="status-indicator">●</span>
-            <span className="status-text">Not Attempted</span>
+  try {
+    return (
+      <div className="module-test-container">
+        {/* Custom Test Navbar */}
+        <div className="test-navbar">
+          <div className="navbar-left">
+            <div className="test-status">
+              <span className="status-indicator">●</span>
+              <span className="status-text">Not Attempted</span>
+            </div>
           </div>
-        </div>
-        
-        <div className="navbar-center">
-          <div className="test-title">{topic?.title}</div>
-          <div className="question-counter">
-            Question {currentQuestion + 1} / {allQuestions.length}
+          
+          <div className="navbar-center">
+            <div className="test-title">{topic?.title || 'Module Test'}</div>
+            <div className="question-counter">
+              Question {currentQuestion + 1} / {(allQuestions && allQuestions.length) || 0}
+            </div>
           </div>
-        </div>
         
         <div className="navbar-right">
           <div className="timer-display">
@@ -727,7 +965,7 @@ def solution():
 
       {/* Main Content - Dynamic Layout */}
       <div className="test-main-content">
-        {allQuestions[currentQuestion]?.type === 'mcq' ? (
+        {(allQuestions && allQuestions[currentQuestion])?.type === 'mcq' ? (
           <>
             {/* Left Panel - Question Statement */}
             <div className="test-left-panel">
@@ -744,7 +982,7 @@ def solution():
               <div className="mcq-options">
                 <h3>Choose the correct answer:</h3>
                 <div className="options-list">
-                  {allQuestions[currentQuestion]?.options?.map((option, index) => (
+                  {(allQuestions[currentQuestion]?.options || []).map((option, index) => (
                     <label key={index} className="mcq-option">
                       <input
                         type="radio"
@@ -839,44 +1077,36 @@ def solution():
               {/* Code Editor Area */}
               <div className="code-editor-area" style={{ height: `${codeHeight}%` }}>
                 <div className="monaco-editor-container">
-                  <Editor
-                    height="100%"
-                    width="100%"
-                    theme="vs-dark"
-                    language={language === 'cpp' ? 'cpp' : language}
-                    value={code}
-                    onChange={(val) => {
-                      setCode(val);
-                      setIsAnswerSaved(false);
+                  <MonacoCodeEditor
+                    key={`question-${currentQuestion}-${language}`}
+                    language={language}
+                    allowedLanguages={course?.language ? [course.language] : course?.programmingLanguage ? [course.programmingLanguage] : ['python']}
+                    onLanguageChange={(newLang) => {
+                      setLanguage(newLang);
+                      isModifiedRef.current = false;
+                      setOutput("");
+                      setVerdict("");
                     }}
-                    options={{ 
-                      fontSize: 14,
-                      fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                      lineNumbers: 'on',
-                      renderLineHighlight: 'line',
-                      overviewRulerBorder: false,
-                      hideCursorInOverviewRuler: true,
-                      overviewRulerLanes: 0,
-                      lineNumbersMinChars: 1,
-                      glyphMargin: false,
-                      folding: false,
-                      renderWhitespace: 'none',
-                      cursorBlinking: 'blink',
-                      cursorStyle: 'line',
-                      wordWrap: 'on',
-                      contextmenu: false,
-                      selectOnLineNumbers: true,
-                      padding: { top: 0, bottom: 0 },
-                      lineDecorationsWidth: 0,
-                      revealHorizontalRightPadding: 0,
-                      scrollbar: {
-                        verticalScrollbarSize: 10,
-                        horizontalScrollbarSize: 10
+                    value={code || ''}
+                    onChange={(val) => {
+                      try {
+                        setCode(val || '');
+                        // Auto-save code for this specific question
+                        setCodingAnswers(prev => ({
+                          ...prev,
+                          [currentQuestion]: {
+                            code: val || '',
+                            language: language
+                          }
+                        }));
+                        isModifiedRef.current = true;
+                        setIsAnswerSaved(false);
+                      } catch (error) {
+                        console.error('Error in onChange:', error);
                       }
                     }}
+                    height="100%"
+                    showLanguageSelector={false}
                   />
                 </div>
               </div>
@@ -886,12 +1116,39 @@ def solution():
                 <div className="vertical-resizer" onMouseDown={startVerticalDrag} />
               )}
 
-              {/* Output Section */}
+              {/* Output Section - Enhanced like LessonPage */}
               {showOutput && (
                 <div className="output-area" style={{ height: `${100 - codeHeight}%` }}>
                   <div className="output-section">
-                    <h4>Output</h4>
-                    <pre className="output-box">{output}</pre>
+                    <div className="output-header">
+                      <h3>Output</h3>
+                    </div>
+                    <div className="output-block">
+                      <pre className="output-text">{output || "Click 'Run' to see output here"}</pre>
+                    </div>
+                    {verdict && (
+                      <div className={`verdict-block ${
+                        verdict.includes('Accepted') || verdict.includes('Output Generated')
+                          ? 'accepted' 
+                          : verdict.includes('Wrong Answer') 
+                            ? 'wrong-answer'
+                            : verdict.includes('Runtime Error') || verdict.includes('Compilation Error')
+                              ? 'error'
+                              : 'output-generated'
+                      }`}>
+                        {verdict.includes('Accepted') 
+                          ? '✅ Accepted' 
+                          : verdict.includes('Wrong Answer')
+                            ? '❌ Wrong Answer'
+                            : verdict.includes('Output Generated')
+                              ? '✅ Output Generated'
+                              : verdict.includes('Runtime Error')
+                                ? '❌ Runtime Error'
+                                : verdict.includes('Compilation Error')
+                                  ? '❌ Compilation Error'
+                                  : verdict}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1011,7 +1268,7 @@ def solution():
           </button>
 
           <div className="question-indicators">
-            {allQuestions.map((question, index) => (
+            {(allQuestions || []).map((question, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentQuestion(index)}
@@ -1052,7 +1309,23 @@ disabled={false}
       )}
     </div>
   );
+  } catch (renderError) {
+    console.error('Render error:', renderError);
+    return (
+      <div className="module-test-container">
+        <div className="error-state">
+          <h2>Rendering Error</h2>
+          <p>An error occurred while rendering the page.</p>
+          <button onClick={() => window.location.reload()} className="back-btn">
+            Reload Page
+          </button>
+          <button onClick={() => navigate(-1)} className="back-btn">
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 };
 
 export default ModuleTestPage;
-

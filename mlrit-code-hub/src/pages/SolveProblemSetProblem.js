@@ -938,6 +938,7 @@ const SolveProblem = () => {
             <div className="flex-1 flex flex-col editor-container">
               <MonacoCodeEditor
                 language={language}
+                allowedLanguages={['python']} // Only Python for problem solving
                 onLanguageChange={(newLang) => {
                   console.log('Language change from Monaco:', newLang);
                   setLanguage(newLang);

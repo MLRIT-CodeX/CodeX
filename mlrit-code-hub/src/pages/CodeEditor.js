@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Editor from "@monaco-editor/react";
+import MonacoCodeEditor from "../components/MonacoCodeEditor";
 import "./CodeEditor.css";
 
 const CodeEditor = () => {
-  const [language, setLanguage] = useState("java");
+  const [language, setLanguage] = useState("python");
   const [code, setCode] = useState("");
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
@@ -11,17 +11,14 @@ const CodeEditor = () => {
   const [time, setTime] = useState(null);
   const [memory, setMemory] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(66.666);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(75);
   
   // Refs for cleanup and throttling
   const resizeTimeoutRef = useRef(null);
   const animationFrameRef = useRef(null);
   const containerRef = useRef(null);
   const resizeHandleRef = useRef(null);
-  const editorRef = useRef(null);
   const editorContainerRef = useRef(null);
-  const selectRef = useRef(null);
 
   useEffect(() => {
     const savedCode = localStorage.getItem(`code-${language}`);
@@ -52,81 +49,6 @@ int main() {
     localStorage.setItem(`code-${language}`, code);
   }, [code, language]);
 
-  // Handle editor mount
-  const handleEditorDidMount = useCallback((editor) => {
-    editorRef.current = editor;
-    
-    // Initial layout call
-    if (editorContainerRef.current) {
-      setTimeout(() => {
-        editor.layout();
-      }, 0);
-    }
-  }, []);
-
-  // Resize observer for dynamic resizing
-  useEffect(() => {
-    if (!editorContainerRef.current || !editorRef.current) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (editorRef.current) {
-          // Use requestAnimationFrame to ensure DOM is updated
-          requestAnimationFrame(() => {
-            editorRef.current.layout();
-          });
-        }
-      }
-    });
-
-    resizeObserver.observe(editorContainerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  // Window resize handler
-  useEffect(() => {
-    const handleWindowResize = () => {
-      if (editorRef.current) {
-        // Debounce window resize events
-        if (resizeTimeoutRef.current) {
-          clearTimeout(resizeTimeoutRef.current);
-        }
-        
-        resizeTimeoutRef.current = setTimeout(() => {
-          editorRef.current.layout();
-        }, 100);
-      }
-    };
-
-    window.addEventListener('resize', handleWindowResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleWindowResize);
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Dropdown state management
-  const handleSelectFocus = useCallback(() => {
-    setIsDropdownOpen(true);
-  }, []);
-
-  const handleSelectBlur = useCallback(() => {
-    // Small delay to allow option selection
-    setTimeout(() => {
-      setIsDropdownOpen(false);
-    }, 150);
-  }, []);
-
-  const handleLanguageChange = useCallback((e) => {
-    setLanguage(e.target.value);
-    setIsDropdownOpen(false);
-  }, []);
 
   // Debounced resize function
   const debouncedResize = useCallback((newWidth) => {
@@ -136,13 +58,6 @@ int main() {
 
     resizeTimeoutRef.current = setTimeout(() => {
       setLeftPanelWidth(newWidth);
-      
-      // Trigger Monaco editor resize after state update
-      if (editorRef.current) {
-        requestAnimationFrame(() => {
-          editorRef.current.layout();
-        });
-      }
     }, 16); // ~60fps
   }, []);
 
@@ -202,13 +117,6 @@ int main() {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-
-    // Ensure editor is properly sized after resize
-    if (editorRef.current) {
-      requestAnimationFrame(() => {
-        editorRef.current.layout();
-      });
-    }
   }, []);
 
   // Resize functionality with proper cleanup
@@ -257,24 +165,6 @@ int main() {
     };
   }, []);
 
-  // Monaco editor options for dynamic resizing
-  const editorOptions = {
-    minimap: { enabled: false },
-    fontSize: 14,
-    fontFamily: "'Fira Code', monospace",
-    lineNumbers: "on",
-    roundedSelection: false,
-    scrollBeyondLastLine: false,
-    automaticLayout: true, // Enable automatic layout for proper resizing
-    scrollbar: {
-      vertical: 'visible',
-      horizontal: 'visible',
-      verticalScrollbarSize: 8,
-      horizontalScrollbarSize: 8
-    },
-    wordWrap: 'on',
-    wrappingStrategy: 'advanced'
-  };
 
   const handleRunCode = async () => {
     setLoading(true);
@@ -314,44 +204,22 @@ int main() {
       >
         <div className="left-panel">
           <div className="top-bar">
-            <div className="language-selector-container">
-              <select 
-                ref={selectRef}
-                value={language} 
-                onChange={handleLanguageChange}
-                onFocus={handleSelectFocus}
-                onBlur={handleSelectBlur}
-                className={isDropdownOpen ? 'dropdown-open' : ''}
-              >
-                <option value="java">Java</option>
-                <option value="python">Python</option>
-                <option value="cpp">C++</option>
-              </select>
-              <div className={`dropdown-arrow ${isDropdownOpen ? 'open' : ''}`}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path 
-                    d="M3 4.5L6 7.5L9 4.5" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
+            <div className="compiler-title">
+              <h3>Online Code Editor</h3>
             </div>
             <button onClick={handleRunCode} disabled={loading}>
               {loading ? "Running..." : "Run"}
             </button>
           </div>
           <div className="monaco-editor-container" ref={editorContainerRef}>
-            <Editor
-              height="100%"
-              theme="vs-dark"
+            <MonacoCodeEditor
               language={language}
+              allowedLanguages={null} // Allow all languages
+              onLanguageChange={setLanguage}
               value={code}
-              onChange={(newCode) => setCode(newCode)}
-              onMount={handleEditorDidMount}
-              options={editorOptions}
+              onChange={setCode}
+              height="100%"
+              showLanguageSelector={true}
             />
           </div>
         </div>

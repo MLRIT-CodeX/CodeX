@@ -26,24 +26,89 @@ const ModuleTestResultPage = ({
   const navigate = useNavigate();
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   const [performanceInsights, setPerformanceInsights] = useState(null);
+  const [correctedTestResults, setCorrectedTestResults] = useState(null);
 
   useEffect(() => {
     if (testResults) {
-      generatePerformanceInsights();
+      // Correct the coding scores based on verdicts if needed
+      const correctedResults = correctCodingScores(testResults);
+      setCorrectedTestResults(correctedResults);
+      
+      if (correctedResults !== testResults) {
+        // Update the results if corrections were made
+        console.log('Correcting coding scores based on verdicts');
+      }
+      generatePerformanceInsights(correctedResults);
     }
   }, [testResults]);
 
-  const generatePerformanceInsights = () => {
+  const correctCodingScores = (results) => {
+    // Check if we have coding results to analyze
+    if (results.codingResults && results.codingResults.length > 0) {
+      let correctedCodingScore = 0;
+      let acceptedCount = 0;
+      
+      // Create codingDetails from codingResults for display
+      const codingDetails = results.codingResults.map((codingResult, index) => {
+        const verdict = codingResult.verdict || 'Not Attempted';
+        const maxMarks = results.totalCodingMarks / results.codingResults.length; // Assume equal marks per question
+        
+        // Only award marks for "Accepted" verdicts
+        if (verdict === 'Accepted') {
+          correctedCodingScore += maxMarks;
+          acceptedCount++;
+        }
+        
+        return {
+          title: `Coding Question ${index + 1}`,
+          verdict: verdict,
+          maxMarks: maxMarks,
+          hasRun: codingResult.hasRun || false,
+          code: codingResult.code || ''
+        };
+      });
+      
+      // If the corrected score differs from the reported score, update it
+      if (correctedCodingScore !== results.codingScore) {
+        console.log(`Correcting coding score from ${results.codingScore} to ${correctedCodingScore}`);
+        
+        const correctedResults = {
+          ...results,
+          codingScore: correctedCodingScore,
+          totalScore: (results.mcqScore || 0) + correctedCodingScore,
+          percentage: ((results.mcqScore || 0) + correctedCodingScore) / (results.totalMarks || 1) * 100,
+          codingDetails: codingDetails
+        };
+        
+        // Update correct/wrong answers count
+        const mcqCorrect = results.mcqCorrect || 0;
+        correctedResults.correctAnswers = mcqCorrect + acceptedCount;
+        correctedResults.wrongAnswers = results.totalQuestions - correctedResults.correctAnswers - results.unattempted;
+        
+        return correctedResults;
+      } else {
+        // Even if scores match, add codingDetails for display
+        return {
+          ...results,
+          codingDetails: codingDetails
+        };
+      }
+    }
+    
+    return results;
+  };
+
+  const generatePerformanceInsights = (results = testResults) => {
     const insights = {
-      overallPerformance: getPerformanceLevel(testResults.percentage),
+      overallPerformance: getPerformanceLevel(results.percentage),
       strengths: [],
       improvements: [],
       recommendations: []
     };
 
     // Analyze MCQ performance
-    if (testResults.mcqScore > 0) {
-      const mcqPercentage = (testResults.mcqScore / testResults.totalMcqMarks) * 100;
+    if (results.mcqScore > 0) {
+      const mcqPercentage = (results.mcqScore / results.totalMcqMarks) * 100;
       if (mcqPercentage >= 80) {
         insights.strengths.push('Strong conceptual understanding (MCQs)');
       } else if (mcqPercentage < 50) {
@@ -52,22 +117,26 @@ const ModuleTestResultPage = ({
       }
     }
 
-    // Analyze coding performance
-    if (testResults.codingScore > 0) {
-      const codingPercentage = (testResults.codingScore / testResults.totalCodingMarks) * 100;
+    // Analyze coding performance - only count "Accepted" solutions
+    if (results.codingScore > 0) {
+      const codingPercentage = (results.codingScore / results.totalCodingMarks) * 100;
       if (codingPercentage >= 80) {
         insights.strengths.push('Excellent problem-solving skills');
       } else if (codingPercentage < 50) {
         insights.improvements.push('Practice more coding problems');
         insights.recommendations.push('Focus on algorithm implementation and debugging');
       }
+    } else if (results.totalCodingMarks > 0) {
+      // No coding marks earned but coding questions exist
+      insights.improvements.push('Run your code and ensure it gets "Accepted" verdict');
+      insights.recommendations.push('Only "Accepted" solutions receive marks - test your code thoroughly');
     }
 
     // Overall recommendations
-    if (testResults.percentage >= 80) {
+    if (results.percentage >= 80) {
       insights.recommendations.push('Ready to proceed to next topic');
       insights.recommendations.push('Consider helping peers with this topic');
-    } else if (testResults.percentage >= 60) {
+    } else if (results.percentage >= 60) {
       insights.recommendations.push('Review weak areas before proceeding');
       insights.recommendations.push('Practice additional problems');
     } else {
@@ -103,12 +172,12 @@ const ModuleTestResultPage = ({
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  if (!testResults) {
+  if (!testResults || !correctedTestResults) {
     return <div>Loading results...</div>;
   }
 
-  const gradeInfo = getGradeInfo(testResults.percentage);
-  const performance = getPerformanceLevel(testResults.percentage);
+  const gradeInfo = getGradeInfo(correctedTestResults.percentage);
+  const performance = getPerformanceLevel(correctedTestResults.percentage);
 
   return (
     <div className="module-test-result-container">
@@ -152,11 +221,11 @@ const ModuleTestResultPage = ({
               <div 
                 className="progress-ring"
                 style={{
-                  background: `conic-gradient(${performance.color} 0deg, ${performance.color} ${testResults.percentage * 3.6}deg, #e5e7eb ${testResults.percentage * 3.6}deg, #e5e7eb 360deg)`
+                  background: `conic-gradient(${performance.color} 0deg, ${performance.color} ${correctedTestResults.percentage * 3.6}deg, #e5e7eb ${correctedTestResults.percentage * 3.6}deg, #e5e7eb 360deg)`
                 }}
               >
                 <div className="progress-inner">
-                  <span className="percentage">{Math.round(testResults.percentage)}%</span>
+                  <span className="percentage">{Math.round(correctedTestResults.percentage)}%</span>
                   <span className="performance-level">{performance.level}</span>
                 </div>
               </div>
@@ -166,19 +235,19 @@ const ModuleTestResultPage = ({
               <div className="score-item">
                 <span className="score-label">Total Score</span>
                 <span className="score-value">
-                  {testResults.totalScore} / {testResults.totalMarks}
+                  {correctedTestResults.totalScore} / {correctedTestResults.totalMarks}
                 </span>
               </div>
               <div className="score-item">
                 <span className="score-label">Questions Correct</span>
                 <span className="score-value">
-                  {testResults.correctAnswers} / {testResults.totalQuestions}
+                  {correctedTestResults.correctAnswers} / {correctedTestResults.totalQuestions}
                 </span>
               </div>
               <div className="score-item">
                 <span className="score-label">Time Taken</span>
                 <span className="score-value">
-                  {formatTime(testResults.timeTaken || 0)}
+                  {formatTime(correctedTestResults.timeTaken || 0)}
                 </span>
               </div>
             </div>
@@ -195,9 +264,9 @@ const ModuleTestResultPage = ({
                 <CheckCircle className="breakdown-icon" />
                 <span className="breakdown-title">Correct</span>
               </div>
-              <div className="breakdown-value">{testResults.correctAnswers}</div>
+              <div className="breakdown-value">{correctedTestResults.correctAnswers}</div>
               <div className="breakdown-subtitle">
-                {Math.round((testResults.correctAnswers / testResults.totalQuestions) * 100)}% of total
+                {Math.round((correctedTestResults.correctAnswers / correctedTestResults.totalQuestions) * 100)}% of total
               </div>
             </div>
 
@@ -206,9 +275,9 @@ const ModuleTestResultPage = ({
                 <XCircle className="breakdown-icon" />
                 <span className="breakdown-title">Incorrect</span>
               </div>
-              <div className="breakdown-value">{testResults.wrongAnswers}</div>
+              <div className="breakdown-value">{correctedTestResults.wrongAnswers}</div>
               <div className="breakdown-subtitle">
-                {Math.round((testResults.wrongAnswers / testResults.totalQuestions) * 100)}% of total
+                {Math.round((correctedTestResults.wrongAnswers / correctedTestResults.totalQuestions) * 100)}% of total
               </div>
             </div>
 
@@ -217,9 +286,9 @@ const ModuleTestResultPage = ({
                 <AlertCircle className="breakdown-icon" />
                 <span className="breakdown-title">Unattempted</span>
               </div>
-              <div className="breakdown-value">{testResults.unattempted}</div>
+              <div className="breakdown-value">{correctedTestResults.unattempted}</div>
               <div className="breakdown-subtitle">
-                {Math.round((testResults.unattempted / testResults.totalQuestions) * 100)}% of total
+                {Math.round((correctedTestResults.unattempted / correctedTestResults.totalQuestions) * 100)}% of total
               </div>
             </div>
           </div>
@@ -230,7 +299,7 @@ const ModuleTestResultPage = ({
           <h3>Question Type Performance</h3>
           
           <div className="type-analysis-grid">
-            {testResults.totalMcqMarks > 0 && (
+            {correctedTestResults.totalMcqMarks > 0 && (
               <div className="type-card">
                 <div className="type-header">
                   <BookOpen className="type-icon" />
@@ -238,18 +307,18 @@ const ModuleTestResultPage = ({
                 </div>
                 <div className="type-stats">
                   <div className="type-score">
-                    <span className="score-earned">{testResults.mcqScore}</span>
-                    <span className="score-total">/ {testResults.totalMcqMarks}</span>
+                    <span className="score-earned">{correctedTestResults.mcqScore}</span>
+                    <span className="score-total">/ {correctedTestResults.totalMcqMarks}</span>
                   </div>
                   <div className="type-percentage">
-                    {Math.round((testResults.mcqScore / testResults.totalMcqMarks) * 100)}%
+                    {Math.round((correctedTestResults.mcqScore / correctedTestResults.totalMcqMarks) * 100)}%
                   </div>
                 </div>
                 <div className="type-progress">
                   <div 
                     className="progress-bar"
                     style={{ 
-                      width: `${(testResults.mcqScore / testResults.totalMcqMarks) * 100}%`,
+                      width: `${(correctedTestResults.mcqScore / correctedTestResults.totalMcqMarks) * 100}%`,
                       backgroundColor: '#3b82f6'
                     }}
                   ></div>
@@ -257,7 +326,7 @@ const ModuleTestResultPage = ({
               </div>
             )}
 
-            {testResults.totalCodingMarks > 0 && (
+            {correctedTestResults.totalCodingMarks > 0 && (
               <div className="type-card">
                 <div className="type-header">
                   <Zap className="type-icon" />
@@ -265,26 +334,97 @@ const ModuleTestResultPage = ({
                 </div>
                 <div className="type-stats">
                   <div className="type-score">
-                    <span className="score-earned">{testResults.codingScore}</span>
-                    <span className="score-total">/ {testResults.totalCodingMarks}</span>
+                    <span className="score-earned">{correctedTestResults.codingScore}</span>
+                    <span className="score-total">/ {correctedTestResults.totalCodingMarks}</span>
                   </div>
                   <div className="type-percentage">
-                    {Math.round((testResults.codingScore / testResults.totalCodingMarks) * 100)}%
+                    {Math.round((correctedTestResults.codingScore / correctedTestResults.totalCodingMarks) * 100)}%
                   </div>
                 </div>
                 <div className="type-progress">
                   <div 
                     className="progress-bar"
                     style={{ 
-                      width: `${(testResults.codingScore / testResults.totalCodingMarks) * 100}%`,
+                      width: `${(correctedTestResults.codingScore / correctedTestResults.totalCodingMarks) * 100}%`,
                       backgroundColor: '#10b981'
                     }}
                   ></div>
                 </div>
+                {testResults.codingScore > correctedTestResults.codingScore && (
+                  <div className="scoring-warning">
+                    ⚠️ Corrected: Only "Accepted" solutions receive marks (was {testResults.codingScore})
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* Detailed Coding Question Analysis */}
+        {correctedTestResults.codingDetails && correctedTestResults.codingDetails.length > 0 && (
+          <div className="coding-details-section">
+            <h3>Coding Questions Breakdown</h3>
+            <p className="section-subtitle">
+              Only "Accepted" solutions receive full marks. Run your code to get a verdict!
+            </p>
+            
+            <div className="coding-questions-grid">
+              {correctedTestResults.codingDetails.map((question, index) => (
+                <div key={index} className={`coding-question-card ${question.verdict?.toLowerCase().replace(' ', '-') || 'not-attempted'}`}>
+                  <div className="question-header">
+                    <div className="question-number">Q{index + 1}</div>
+                    <div className="question-title">{question.title || `Coding Question ${index + 1}`}</div>
+                  </div>
+                  
+                  <div className="question-verdict">
+                    <div className={`verdict-badge ${question.verdict?.toLowerCase().replace(' ', '-') || 'not-attempted'}`}>
+                      {question.verdict === 'Accepted' && '✅ Accepted'}
+                      {question.verdict === 'Wrong Answer' && '❌ Wrong Answer'}
+                      {question.verdict === 'Runtime Error' && '💥 Runtime Error'}
+                      {question.verdict === 'Compilation Error' && '🔧 Compilation Error'}
+                      {question.verdict === 'Output Generated' && '⚡ Output Generated'}
+                      {question.verdict === 'Connection Error' && '🔌 Connection Error'}
+                      {question.verdict === 'No Output' && '⭕ No Output'}
+                      {!question.verdict && '⏸️ Not Attempted'}
+                    </div>
+                  </div>
+                  
+                  <div className="question-score">
+                    <span className="earned-marks">
+                      {question.verdict === 'Accepted' ? question.maxMarks : 0}
+                    </span>
+                    <span className="total-marks">/ {question.maxMarks}</span>
+                    <span className="marks-label">marks</span>
+                  </div>
+                  
+                  {question.hasRun && (
+                    <div className="execution-info">
+                      <div className="execution-status">
+                        <span className="status-icon">🏃‍♂️</span>
+                        <span className="status-text">Code Executed</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <div className="coding-summary">
+              <div className="summary-item">
+                <span className="summary-label">Accepted Solutions:</span>
+                <span className="summary-value">
+                  {correctedTestResults.codingDetails.filter(q => q.verdict === 'Accepted').length} / {correctedTestResults.codingDetails.length}
+                </span>
+              </div>
+              <div className="summary-item">
+                <span className="summary-label">Total Coding Marks:</span>
+                <span className="summary-value">
+                  {correctedTestResults.codingScore} / {correctedTestResults.totalCodingMarks}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Performance Insights */}
         {performanceInsights && (

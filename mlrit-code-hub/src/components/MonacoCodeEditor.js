@@ -1,4 +1,11 @@
+/* eslint-disable no-undef */
 import React, { useEffect, useState, useRef } from 'react';
+
+/**
+ * Alias with custom flags to satisfy type checkers.
+ * @type {Window & typeof globalThis & { _monacoLoaded?: boolean; _monacoLoading?: boolean; require?: any; monaco?: any }}
+ */
+const w = /** @type {any} */ (window);
 
 // Language configurations with simple templates
 const LANGUAGE_CONFIGS = {
@@ -17,59 +24,93 @@ const LANGUAGE_CONFIGS = {
     template: "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}",
     monacoLang: "cpp",
   },
-  javascript: {
-    name: "JavaScript",
-    template: "// Write your code here\n\n",
-    monacoLang: "javascript",
-  },
 };
 
-// Monaco Editor loader utility
+// Monaco Editor loader utility (robust against multiple mounts and existing AMD loader)
 const loadMonacoEditor = () => {
   return new Promise((resolve, reject) => {
-    // Check if Monaco is already loaded
-    if (window.monaco && window._monacoLoaded) {
-      resolve(window.monaco);
-      return;
-    }
+    try {
+      // Already loaded
+      if (w.monaco && w._monacoLoaded) {
+        return resolve(w.monaco);
+      }
 
-    // Check if Monaco is currently loading
-    if (window._monacoLoading) {
-      const checkInterval = setInterval(() => {
-        if (window.monaco && window._monacoLoaded) {
+      // If currently loading, wait until it finishes
+      if (w._monacoLoading) {
+        const checkInterval = setInterval(() => {
+          if (w.monaco && w._monacoLoaded) {
+            clearInterval(checkInterval);
+            resolve(w.monaco);
+          }
+        }, 100);
+        setTimeout(() => {
           clearInterval(checkInterval);
-          resolve(window.monaco);
-        }
-      }, 100);
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        reject(new Error('Monaco loading timeout'));
-      }, 10000);
-      return;
-    }
+          reject(new Error('Monaco loading timeout'));
+        }, 15000);
+        return;
+      }
 
-    // Start loading Monaco
-    window._monacoLoading = true;
-    
-    // Check if loader script already exists
-    if (!document.querySelector('script[src*="loader.min.js"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
-      script.onload = () => {
-        window.require.config({ 
-          paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }
-        });
-        window.require(['vs/editor/editor.main'], () => {
-          window._monacoLoaded = true;
-          window._monacoLoading = false;
-          resolve(window.monaco);
-        });
+      // Function to configure AMD require and load editor main
+      const loadWithRequire = () => {
+        try {
+          if (!w.require) {
+            throw new Error('AMD loader not available');
+          }
+          w.require.config({
+            paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }
+          });
+          w.require(['vs/editor/editor.main'], () => {
+            w._monacoLoaded = true;
+            w._monacoLoading = false;
+            resolve(w.monaco);
+          });
+        } catch (err) {
+          w._monacoLoading = false;
+          reject(err);
+        }
       };
-      script.onerror = () => {
-        window._monacoLoading = false;
-        reject(new Error('Failed to load Monaco'));
-      };
-      document.head.appendChild(script);
+
+      // Start loading
+      w._monacoLoading = true;
+
+      // If AMD loader is already present (e.g., another page added the script), use it
+      if (w.require && typeof w.require === 'function') {
+        return loadWithRequire();
+      }
+
+      // Otherwise, inject the AMD loader script
+      /** @type {HTMLScriptElement|null} */
+      let script = document.querySelector('script[src*="loader.min.js"]');
+      if (!script) {
+        const newScript = /** @type {HTMLScriptElement} */ (document.createElement('script'));
+        newScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
+        newScript.crossOrigin = 'anonymous';
+        newScript.referrerPolicy = 'no-referrer';
+        newScript.onload = loadWithRequire;
+        newScript.onerror = () => {
+          w._monacoLoading = false;
+          reject(new Error('Failed to load Monaco AMD loader'));
+        };
+        document.head.appendChild(newScript);
+      } else {
+        // Script tag exists; wait a tick and attempt to use it
+        const waitForRequire = setInterval(() => {
+          if (w.require) {
+            clearInterval(waitForRequire);
+            loadWithRequire();
+          }
+        }, 50);
+        setTimeout(() => {
+          clearInterval(waitForRequire);
+          if (!w.require) {
+            w._monacoLoading = false;
+            reject(new Error('AMD loader present but not initialized'));
+          }
+        }, 5000);
+      }
+    } catch (e) {
+      w._monacoLoading = false;
+      reject(e);
     }
   });
 };
@@ -80,7 +121,8 @@ const MonacoCodeEditor = ({
   value, 
   onChange,
   height = '400px',
-  showLanguageSelector = true 
+  showLanguageSelector = true,
+  allowedLanguages = null // Array of allowed languages, null means all languages
 }) => {
   const [currentLanguage, setCurrentLanguage] = useState(language || 'python');
   const [code, setCode] = useState('');
@@ -314,11 +356,11 @@ const MonacoCodeEditor = ({
         
         const model = monacoRef.current.getModel();
         
-        if (model && window.monaco) {
+        if (model && w.monaco) {
           console.log('Changing language from', currentLanguage, 'to', language);
           
           // Change the language mode
-          window.monaco.editor.setModelLanguage(model, newLanguage.monacoLang);
+          w.monaco.editor.setModelLanguage(model, newLanguage.monacoLang);
           
           // Update the code content with new template if:
           // 1. No custom value is provided from parent, OR
@@ -402,9 +444,15 @@ const MonacoCodeEditor = ({
               cursor: 'pointer'
             }}
           >
-            {Object.entries(LANGUAGE_CONFIGS).map(([key, config]) => (
-              <option key={key} value={key}>{config.name}</option>
-            ))}
+            {Object.entries(LANGUAGE_CONFIGS)
+              .filter(([key]) => {
+                if (!allowedLanguages || allowedLanguages === null) return true;
+                if (!Array.isArray(allowedLanguages)) return true;
+                return allowedLanguages.includes(key);
+              })
+              .map(([key, config]) => (
+                <option key={key} value={key}>{config.name}</option>
+              ))}
           </select>
         </div>
       )}
