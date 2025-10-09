@@ -67,7 +67,7 @@ const LandingPage = () => {
                 className={`nav-link ${activeSection === 'success-stories' ? 'active' : ''}`}
                 onClick={scrollToSection('success-stories')}
               >
-                Success Stories
+                Success
               </a>
               <a 
                 href="#about" 
@@ -89,10 +89,6 @@ const LandingPage = () => {
         <div className="container">
           <div className="hero-grid">
             <div className="hero-content">
-              <div className="badge">
-                🚀 Empowering Next Generation Coders
-              </div>
-              <h1 className="hero-title">MLRIT Code Hub</h1>
               <h2 className="hero-subtitle">
                 Where Code Meets{" "}
                 <span className="gradient-text">Excellence</span>
@@ -105,9 +101,6 @@ const LandingPage = () => {
               <div className="hero-buttons">
                 <Link to="/login" className="btn btn-primary btn-large">
                   Get Started Free
-                </Link>
-                <Link to="/login" className="btn btn-outline btn-large">
-                  View Problems
                 </Link>
               </div>
               

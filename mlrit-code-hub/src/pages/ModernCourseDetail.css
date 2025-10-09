@@ -54,11 +54,11 @@
 
 /* Final Exam Section Styles */
 .final-exam-section {
-  margin-top: 32px;
+  margin-top: 60px;
   background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   border: 1px solid #475569;
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px;
   position: relative;
   overflow: hidden;
 }
@@ -79,6 +79,8 @@
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 20px;
+  height: 135px;
+  border-radius: 16px;
 }
 
 .exam-icon {
@@ -95,6 +97,9 @@
 
 .exam-info {
   flex: 1;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100px;
 }
 
 .exam-title {
@@ -105,6 +110,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  padding-left: 16px;
+  padding-top: 5px;
 }
 
 .exam-description {
@@ -112,6 +119,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
+  padding-left: 16px;
 }
 
 .exam-stats {
@@ -777,6 +785,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  height: 46.5px;
 }
 
 .nav-tabs {
@@ -826,6 +835,10 @@
   padding: 32px 20px;
 }
 
+.header-content {
+  margin-bottom: 60px;
+  height: 40px !important;
+}
 
 /* Curriculum Section */
 .curriculum-section {
@@ -833,20 +846,22 @@
 }
 
 .curriculum-header {
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  height: 40px !important;
 }
 
 .section-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  color: #ffffff;
+  color: #9ca3af !important;
+  font-size: 16px;
+  margin: 0 !important;
+  text-align: center !important;
 }
 
 .curriculum-subtitle {
   color: #9ca3af;
   font-size: 16px;
   margin: 0;
+  text-align: center !important;
 }
 
 .modules-grid {
@@ -880,10 +895,9 @@
 
 .module-card {
   background: #1a1f2e;
-  border: 1px solid #2d3748;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: 16px !important;
+  margin-bottom: 10px !important;
   transition: all 0.3s ease;
   transform: translateY(0);
   position: relative;
@@ -986,6 +1000,7 @@
 .module-content {
   flex: 1;
   min-width: 0;
+  padding-right: 10px;
 }
 
 .module-title-row {
@@ -1688,6 +1703,19 @@
   transform: translateY(-2px);
 }
 
+.module-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  position: relative;
+  width: 100%;
+  padding: 16px;
+  background: #1a1f2e;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  margin: 0 !important;
+}
+
 .stat-icon {
   width: 48px;
   height: 48px;
@@ -1762,8 +1790,15 @@
   }
   
   .module-header {
-    flex-direction: column;
+    display: flex;
     gap: 16px;
+    align-items: flex-start;
+    position: relative;
+    width: 100%;
+    padding: 16px;
+    background: #1a1f2e;
+    border-radius: 8px;
+    transition: all 0.3s ease;
   }
   
   .module-btn {
@@ -2074,3 +2109,4 @@
     font-size: 1.25rem;
   }
 }
+

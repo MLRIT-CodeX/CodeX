@@ -63,29 +63,12 @@ const AuthPage = () => {
     <div className="auth-container">
       {/* Navigation Bar */}
       <div className="auth-nav">
-        <div className="nav-left">
-          <Link to="/" className="nav-logo">
-            <div className="nav-logo-icon">
-              <span>M</span>
-            </div>
-            <span className="nav-logo-text">MLRIT Code Hub</span>
-          </Link>
-          <div className="nav-links">
-            <a onClick={handleLinkClick} className="nav-link">Home</a>
-            <a onClick={handleLinkClick} className="nav-link">Problem Set</a>
-            <a onClick={handleLinkClick} className="nav-link">Contests</a>
-            <a onClick={handleLinkClick} className="nav-link">Leaderboard</a>
-            <a onClick={handleLinkClick} className="nav-link">Discuss</a>
-          </div>
-        </div>
-        <div className="nav-right">
           <Link to="/" className="go-back-btn">
             <svg className="back-arrow" viewBox="0 0 24 24" width="24" height="24">
               <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
             </svg>
             Go Back
           </Link>
-        </div>
       </div>
 
       {/* Login Popup */}

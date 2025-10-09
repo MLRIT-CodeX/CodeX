@@ -22,14 +22,14 @@
 /* Main Container */
 .template-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--background) 0%, var(--background-mid) 50%, var(--background-light));
+  background: black;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   color: var(--text-main);
 }
 
 /* Add top padding only when navbar is present */
 .template-container.with-navbar {
-  padding-top: var(--content-top-padding); /* Use global navbar spacing variable */
+  padding-top: 45px; /* Use global navbar spacing variable */
 }
 
 .template-layout {
@@ -293,7 +293,7 @@
 .template-main {
   flex: 1;
   padding: 32px;
-  background: transparent;
+  background: black;
 }
 
 /* Header */
@@ -304,7 +304,7 @@
 .page-title {
   font-size: 32px;
   font-weight: 700;
-  color: #ffa116 !important;
+  color: white !important;
   margin: 0 0 8px 0;
   text-shadow: 0 0 10px rgba(255, 161, 22, 0.3);
 }

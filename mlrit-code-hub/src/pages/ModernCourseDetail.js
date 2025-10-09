@@ -23,7 +23,7 @@ import {
   Timer,
   AlertTriangle
 } from "lucide-react";
-import LeaderboardSection from "../components/LeaderboardSection";
+import CourseLeaderboard from "./CourseLeaderboard.js";
 import { shouldShowNavbar } from "../utils/navbarUtils";
 import "./ModernCourseDetail.css";
 
@@ -585,7 +585,7 @@ const ModernCourseDetail = () => {
           <div className="curriculum-section">
             <div className="curriculum-header">
               <div className="header-content">
-                <h3 className="section-title">Course Curriculum</h3>
+                <p className="section-title">Course Curriculum</p>
                 <p className="curriculum-subtitle">{totalTopics} modules • {course.duration || '2-3 hours'} total</p>
               </div>
             </div>
@@ -649,11 +649,11 @@ const ModernCourseDetail = () => {
                           </div>
                           <p className="module-description">{topic.description}</p>
                           
-                          {topicCompletionPercentage > 0 && (
+                          {/*topicCompletionPercentage > 0 && (
                             <div className="completion-badge">
                               {topicCompletionPercentage === 100 ? '100% Solved' : `${topicCompletionPercentage}% Complete`}
                             </div>
-                          )}
+                          )*/}
                           
                           {/* Lesson and Test Items */}
                           <div className="module-items">
@@ -778,7 +778,12 @@ const ModernCourseDetail = () => {
         )}
         
         {activeTab === 'leaderboard' && isEnrolled && (
-          <LeaderboardSection courseId={courseId} userId={userId} token={token} />
+          <CourseLeaderboard 
+            courseId={courseId} 
+            userId={userId} 
+            token={token} 
+            refreshTrigger={Date.now()} 
+          />
         )}
       </div>
     </div>

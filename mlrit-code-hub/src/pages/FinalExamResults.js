@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Award, CheckCircle, XCircle, Clock, User, Shield, Target, TrendingUp, BarChart3, BookOpen, RotateCcw, Eye, Brain, Code } from 'lucide-react';
+import { ArrowLeft, Award, CheckCircle, XCircle, Clock, User, Shield, TrendingUp, BarChart3, BookOpen, RotateCcw, Eye, Brain, Code } from 'lucide-react';
 import './FinalExamResults.css';
 
 const KnowledgeAssessmentResults = () => {
@@ -107,11 +107,7 @@ const KnowledgeAssessmentResults = () => {
     );
   }
 
-  const getScoreColor = (percentage) => {
-    if (percentage >= 80) return '#4CAF50';
-    if (percentage >= 60) return '#FF9800';
-    return '#f44336';
-  };
+  
 
   const getPerformanceRemark = (percentage) => {
     if (percentage >= 90) return 'Excellent';
@@ -137,40 +133,9 @@ const KnowledgeAssessmentResults = () => {
     <div className="module-test-container">
       {!showReview && (
         <div className="test-container">
-          <div className="test-header">
-            <div className="header-content">
-              <h1 className="test-title">Final Exam Results</h1>
-              <p className="test-subtitle">Your performance summary and detailed analysis</p>
-            </div>
-          </div>
+          <h1 className="results-simple-title">Final Exam Results</h1>
 
           <div className="results-display">
-          {/* Main Score Display */}
-          <div className="main-score-section">
-            <div className="score-circle">
-              <div 
-                className="score-progress"
-                style={{
-                  background: `conic-gradient(${getScoreColor(enhancedResults.actualScore)} ${enhancedResults.actualScore * 3.6}deg, #e0e0e0 0deg)`
-                }}
-              >
-                <div className="score-inner">
-                  <span className="score-percentage">{enhancedResults.actualScore}%</span>
-                  <span className="score-label">Overall Score</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="marks-display">
-              <div className="marks-item">
-                <Target size={24} />
-                <div className="marks-info">
-                  <span className="marks-value">{enhancedResults.earnedMarks} / {enhancedResults.totalMarks}</span>
-                  <span className="marks-label">Marks Earned</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Question Breakdown */}
           <div className="question-breakdown">
@@ -215,9 +180,6 @@ const KnowledgeAssessmentResults = () => {
               </div>
               <div className="info-item">
                 <strong>Total Marks:</strong> {enhancedResults.totalMarks}
-              </div>
-              <div className="info-item">
-                <strong>Marks Earned:</strong> {enhancedResults.earnedMarks}
               </div>
               <div className="info-item">
                 <strong>Time Spent:</strong> {formatTime(safeSubmissionData.timeSpent)}
@@ -273,7 +235,7 @@ const KnowledgeAssessmentResults = () => {
               </div>
 
               <div className="performance-row total">
-                <span className="question-type total"><strong>Overall Performance</strong></span>
+                <span className="question-type total"><strong>Total</strong></span>
                 <span><strong>{enhancedResults.totalAttempted}</strong></span>
                 <span><strong>{enhancedResults.correctCount}</strong></span>
                 <span><strong>{enhancedResults.earnedMarks}</strong></span>
@@ -311,140 +273,131 @@ const KnowledgeAssessmentResults = () => {
               onClick={() => navigate(`/courses/${courseId}`)}
             >
               <div className="btn-glow"></div>
-              <BookOpen size={20} />
-              <span>RETURN TO COURSE</span>
+              <span>CONTINUE LEARNING</span>
             </button>
             <button 
               className="neon-btn secondary-neon"
               onClick={() => setShowReview(true)}
             >
               <div className="btn-glow"></div>
-              <Eye size={20} />
               <span>REVIEW ASSESSMENT</span>
             </button>
           </div>
-          </div>
+          {/* end results-display */}
+        </div>
         </div>
       )}
 
       {/* Review Assessment Component - ModuleTestPage Style */}
       {showReview && (
         <div className="test-container">
-          <div className="test-header">
-            <div className="header-content">
-              <h1 className="test-title">Final Exam Review</h1>
-              <p className="test-subtitle">Review your answers and correct solutions</p>
-            </div>
-            <button 
-              className="close-review-btn"
-              onClick={() => setShowReview(false)}
-            >
+          <h1 className="review-simple-title">Final Exam Review</h1>
+          <div className="review-content">
+            {/* All Questions in Single Column */}
+            {finalExam?.mcqs?.map((mcq, index) => (
+                <div key={`mcq-review-${index}`} className="review-question-card">
+                  <div className="question-header">
+                    <span className="question-number">Question {index + 1}</span>
+                    <span className={`question-result ${results?.mcqResults?.[index]?.isCorrect ? 'correct' : 'incorrect'}`}>
+                      {results?.mcqResults?.[index]?.isCorrect ? (
+                        <>
+                          <CheckCircle size={16} />
+                          Correct
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={16} />
+                          Incorrect
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  
+                  <div className="question-content">
+                    <h3 className="question-text">{mcq.question}</h3>
+                    
+                    <div className="options-review">
+                      {mcq.options.map((option, optionIndex) => (
+                        <div 
+                          key={optionIndex}
+                          className={`option-review ${
+                            optionIndex === mcq.correct ? 'correct-answer' : ''
+                          } ${
+                            results?.mcqResults?.[index]?.userAnswer === optionIndex ? 
+                              (results?.mcqResults?.[index]?.isCorrect ? 'correct-answer' : 'wrong-answer') : ''
+                          }`}
+                        >
+                          <span className="option-letter">{String.fromCharCode(65 + optionIndex)}</span>
+                          <span className="option-text">{option}</span>
+                          {optionIndex === mcq.correct && <CheckCircle size={16} className="correct-icon" />}
+                          {results?.mcqResults?.[index]?.userAnswer === optionIndex && !results?.mcqResults?.[index]?.isCorrect && <XCircle size={16} className="wrong-icon" />}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {mcq.explanation && (
+                      <div className="explanation-box">
+                        <h4>Explanation:</h4>
+                        <p>{mcq.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+            {/* Coding Questions */}
+            {finalExam?.codeChallenges?.map((challenge, index) => (
+                <div key={`coding-review-${index}`} className="review-question-card coding-review">
+                  <div className="question-header">
+                    <span className="question-number">Coding Challenge {index + 1}</span>
+                    <span className={`question-result ${results?.codingResults?.[index]?.verdict === 'Accepted' ? 'correct' : 'incorrect'}`}>
+                      {results?.codingResults?.[index]?.verdict === 'Accepted' ? (
+                        <>
+                          <CheckCircle size={16} />
+                          Accepted
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={16} />
+                          {results?.codingResults?.[index]?.verdict || 'Wrong Answer'}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  
+                  <div className="question-content">
+                    <h3 className="question-text">{challenge.title}</h3>
+                    <p className="challenge-description">{challenge.description}</p>
+                    
+                    {challenge.sampleInput && (
+                      <div className="sample-data">
+                        <h4>Sample Input:</h4>
+                        <pre className="sample-text">{challenge.sampleInput}</pre>
+                      </div>
+                    )}
+                    
+                    {challenge.sampleOutput && (
+                      <div className="sample-data">
+                        <h4>Sample Output:</h4>
+                        <pre className="sample-text">{challenge.sampleOutput}</pre>
+                      </div>
+                    )}
+                    
+                    {results?.codingResults?.[index]?.output && (
+                      <div className="execution-output">
+                        <h4>Output:</h4>
+                        <pre className="output-text">{results.codingResults[index].output}</pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+          <div className="review-footer">
+            <button className="close-review-btn" onClick={() => setShowReview(false)}>
               <XCircle size={20} />
               Close Review
             </button>
-          </div>
-
-          <div className="review-content">
-            {/* MCQ Questions Review */}
-            {finalExam?.mcqs?.map((mcq, index) => (
-              <div key={`mcq-review-${index}`} className="review-question-card">
-                <div className="question-header">
-                  <span className="question-number">Question {index + 1}</span>
-                  <span className={`question-result ${results?.mcqResults?.[index]?.isCorrect ? 'correct' : 'incorrect'}`}>
-                    {results?.mcqResults?.[index]?.isCorrect ? (
-                      <>
-                        <CheckCircle size={16} />
-                        Correct
-                      </>
-                    ) : (
-                      <>
-                        <XCircle size={16} />
-                        Incorrect
-                      </>
-                    )}
-                  </span>
-                </div>
-                
-                <div className="question-content">
-                  <h3 className="question-text">{mcq.question}</h3>
-                  
-                  <div className="options-review">
-                    {mcq.options.map((option, optionIndex) => (
-                      <div 
-                        key={optionIndex}
-                        className={`option-review ${
-                          optionIndex === mcq.correct ? 'correct-answer' : ''
-                        } ${
-                          results?.mcqResults?.[index]?.userAnswer === optionIndex ? 'user-answer' : ''
-                        } ${
-                          results?.mcqResults?.[index]?.userAnswer === optionIndex && optionIndex !== mcq.correct ? 'wrong-answer' : ''
-                        }`}
-                      >
-                        <span className="option-letter">{String.fromCharCode(65 + optionIndex)}</span>
-                        <span className="option-text">{option}</span>
-                        {optionIndex === mcq.correct && <CheckCircle size={16} className="correct-icon" />}
-                        {results?.mcqResults?.[index]?.userAnswer === optionIndex && optionIndex !== mcq.correct && <XCircle size={16} className="wrong-icon" />}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {mcq.explanation && (
-                    <div className="explanation-box">
-                      <h4>Explanation:</h4>
-                      <p>{mcq.explanation}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Coding Questions Review */}
-            {finalExam?.codeChallenges?.map((challenge, index) => (
-              <div key={`coding-review-${index}`} className="review-question-card coding-review">
-                <div className="question-header">
-                  <span className="question-number">Coding Challenge {index + 1}</span>
-                  <span className={`question-result ${results?.codingResults?.[index]?.verdict === 'Accepted' ? 'correct' : 'incorrect'}`}>
-                    {results?.codingResults?.[index]?.verdict === 'Accepted' ? (
-                      <>
-                        <CheckCircle size={16} />
-                        Accepted
-                      </>
-                    ) : (
-                      <>
-                        <XCircle size={16} />
-                        {results?.codingResults?.[index]?.verdict || 'Wrong Answer'}
-                      </>
-                    )}
-                  </span>
-                </div>
-                
-                <div className="question-content">
-                  <h3 className="question-text">{challenge.title}</h3>
-                  <p className="challenge-description">{challenge.description}</p>
-                  
-                  {challenge.sampleInput && (
-                    <div className="sample-data">
-                      <h4>Sample Input:</h4>
-                      <pre className="sample-text">{challenge.sampleInput}</pre>
-                    </div>
-                  )}
-                  
-                  {challenge.sampleOutput && (
-                    <div className="sample-data">
-                      <h4>Sample Output:</h4>
-                      <pre className="sample-text">{challenge.sampleOutput}</pre>
-                    </div>
-                  )}
-                  
-                  {results?.codingResults?.[index]?.output && (
-                    <div className="execution-output">
-                      <h4>Output:</h4>
-                      <pre className="output-text">{results.codingResults[index].output}</pre>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

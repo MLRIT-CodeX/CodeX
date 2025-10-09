@@ -369,7 +369,7 @@ int main() {
       // Show tab switch warning modal instead of auto-fullscreen
       
       // Enterprise-level response to tab switching
-      if (tabSwitchCount >= 3) {
+      if (tabSwitchCount >= 100) {
         addSecurityViolation('Excessive tab switching - Auto-submitting exam');
         setAutoSubmitTriggered(true);
         handleSubmitTest(true);
@@ -411,7 +411,7 @@ int main() {
           addSecurityViolation(`Fullscreen exit detected - Violation ${newCount}`);
           
           // Check if this is the 3rd violation
-          if (newCount >= 3) {
+          if (newCount >= 100) {
             addSecurityViolation('Maximum fullscreen violations reached - Auto-submitting exam');
             setAutoSubmitTriggered(true);
             alert('Maximum violations reached. Your exam will be submitted automatically.');
@@ -1575,11 +1575,11 @@ def solution():
         ref={webcamRef} 
         autoPlay 
         muted 
-        style={{ display: 'none' }}
+        className="hidden-element"
       />
       <canvas 
         ref={canvasRef} 
-        style={{ display: 'none' }}
+        className="hidden-element"
       />
 
       {/* Main Content - Dynamic Layout */}
@@ -1689,7 +1689,9 @@ def solution():
               </div>
 
               {/* Code Editor Area */}
-              <div className="code-editor-area" style={{ height: `${codeHeight}%` }}>
+              <div 
+                className="code-editor-area" 
+                style={{ height: `${codeHeight}%` }}>
                 <div className="monaco-editor-container">
                   <MonacoCodeEditor
                     key={`question-${currentQuestion}-${language}`}
@@ -1726,7 +1728,9 @@ def solution():
 
               {/* Output Section - Exactly like LessonPage */}
               {showOutput && (
-                <div className="output-area" style={{ height: `${100 - codeHeight}%` }}>
+                <div 
+                  className="output-area" 
+                  style={{ height: `${100 - codeHeight}%` }}>
                   <div className="output-section">
                     <div className="output-header">
                       <h3>Output</h3>

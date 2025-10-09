@@ -1,15 +1,16 @@
 .problemset-page {
   padding: var(--spacing-3xl);
-  background: #0f172a;
+  background: black;
   color: white;
   min-height: 100vh;
   padding-top: var(--content-top-padding);
 }
 
 .problemset-page h2 {
-  color: #ffa116;
+  color: white;
   margin-bottom: 20px;
   text-align: center;
+  font-size: 2rem;
 }
 
 .problemset-filters {
@@ -57,7 +58,7 @@
 .problemset-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   margin-bottom: 20px;
 }
 
@@ -65,17 +66,17 @@
   display: flex;
   align-items: center;
   background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3a 100%);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(138, 0, 196, 0.1);
-  padding: 12px 24px;
-  margin-bottom: 12px;
-  font-size: 0.9rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(138, 0, 196, 0.1);
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   outline: none;
   border: 1px solid rgba(138, 0, 196, 0.1);
   position: relative;
   overflow: hidden;
+  height: 46px;
 }
 
 .problem-row::before {
@@ -85,7 +86,7 @@
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, #ffa116, #8A00C4);
+  background: linear-gradient(180deg, white, #8A00C4);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -93,18 +94,19 @@
 .problem-row.header-row {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border: 1px solid #8A00C4;
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: default;
   font-weight: 600;
-  color: #ffa116;
+  color: white;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  font-size: 1rem;
-  padding: 16px 24px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(138, 0, 196, 0.15);
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(138, 0, 196, 0.15);
   position: relative;
   overflow: hidden;
+  height: 40px;
 }
 
 .problem-row.header-row::before {
@@ -114,7 +116,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #ffa116, #8A00C4, #ffa116);
+  background: linear-gradient(90deg, white, #8A00C4, white);
   opacity: 0.8;
 }
 
@@ -124,40 +126,13 @@
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 }
 
-.problem-row.header-row .problem-si,
 .problem-row.header-row .problem-title,
 .problem-row.header-row .problem-score,
 .problem-row.header-row .problem-success,
 .problem-row.header-row .problem-difficulty,
 .problem-row.header-row .solve-btn {
-  color: #ffa116;
-  font-weight: 600;
-  text-shadow: 0 0 8px rgba(255, 161, 22, 0.3);
-  position: relative;
-  z-index: 1;
-}
-
-.problem-row.header-row .problem-si {
-  min-width: 40px;
-  text-align: center;
-  font-size: 1rem;
-}
-
-.problem-row.header-row .problem-title {
-  flex: 1;
-  margin-left: 20px;
-  font-size: 1rem;
-  color: #ffa116 !important;
+  color: var(--header-row-text);
   font-weight: 700;
-  text-align: left;
-}
-
-.problem-row.header-row .problem-score,
-.problem-row.header-row .problem-success {
-  margin: 0 24px;
-  min-width: 70px;
-  text-align: center;
-  font-size: 0.95rem;
 }
 
 .problem-row.header-row .problem-difficulty {
@@ -181,7 +156,7 @@
 
 .problem-row.header-row .solve-btn:hover {
   background: transparent;
-  color: #ffa116;
+  color: var(--header-row-hover);
   transform: none;
 }
 
@@ -191,7 +166,7 @@
 .problem-row.header-row .problem-success,
 .problem-row.header-row .problem-difficulty,
 .problem-row.header-row .solve-btn {
-  color: #ffa116;
+  color: var(--header-row-text) !important;
   font-weight: 700;
 }
 
@@ -203,7 +178,7 @@
 
 .problem-row.header-row .solve-btn:hover {
   background: transparent;
-  color: #ffa116;
+  color: white;
 }
 
 .problem-row:hover {
@@ -224,23 +199,23 @@
 
 .problem-si {
   color: #ffffff;
-  min-width: 45px;
-  font-weight: 700;
+  min-width: 36px;
+  font-weight: 600;
   text-align: center;
-  font-size: 1.2rem;
-  margin-right: 16px;
+  font-size: 1rem;
+  margin-right: 12px;
   position: relative;
   z-index: 1;
 }
 
 .problem-row .problem-title {
-  color: #ffffff !important;
+  color: white !important;
   font-weight: 500;
   flex: 1;
   margin-left: 0;
-  font-size: 1.2rem;
-  line-height: 1.4;
-  letter-spacing: 0.2px;
+  font-size: 1rem;
+  line-height: 1.3;
+  letter-spacing: 0.1px;
   position: relative;
   z-index: 1;
   text-overflow: ellipsis;
@@ -249,40 +224,57 @@
   transition: color 0.2s ease;
   cursor: pointer;
   text-align: left;
+  padding: 2px 0;
 }
 
 .problem-row .problem-title:hover {
-  color: #f0f0f0 !important;
+  color: white !important;
 }
 
 .problem-score {
   color: #ffffff;
-  margin: 0 20px;
-  min-width: 60px;
+  margin: 0 12px;
   text-align: center;
-  font-size: 1rem;
-  font-weight: 600;
 }
 
-.problem-success {
-  color: #ffffff;
-  margin: 0 20px;
-  min-width: 80px;
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 600;
+:root {
+  --mlrit-purple: #8b5cf6;
+  --mlrit-purple-light: #a78bfa;
+  --mlrit-purple-dark: #7c3aed;
+  --mlrit-pink: #ec4899;
+  --mlrit-blue: #3b82f6;
+  --bg-dark: #0f0f23;
+  --bg-mid: #1a1a2e;
+  --bg-light: #16213e;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --header-row-text: var(--mlrit-purple);
+  --header-row-hover: #2563eb;
+}
+
+.problem-row.header-row .problem-title,
+.problem-row.header-row .problem-score,
+.problem-row.header-row .problem-success,
+.problem-row.header-row .problem-difficulty,
+.problem-row.header-row .solve-btn {
+  color: var(--header-row-text);
+  font-weight: 700;
+}
+
+.problem-row.header-row .solve-btn:hover {
+  color: var(--header-row-hover);
 }
 
 .problem-difficulty {
-  font-weight: 700;
-  margin: 0 20px;
-  min-width: 80px;
+  font-weight: 600;
+  margin: 0 12px;
+  min-width: 70px;
   text-align: center;
-  font-size: 1rem;
-  padding: 4px 10px;
-  border-radius: 20px;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   position: relative;
   z-index: 1;
 }
@@ -302,22 +294,25 @@
 .solve-btn {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 6px 14px;
+  padding: 4px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  margin-left: 20px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  margin-left: 12px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
   position: relative;
   z-index: 1;
   overflow: hidden;
+  height: 28px;
+  min-width: 60px;
+  justify-content: center;
 }
 
 .solve-btn::before {
@@ -415,7 +410,7 @@
 }
 
 .filtered-indicator {
-  color: #ffa116;
+  color: white;
   font-size: 0.85rem;
   font-style: italic;
   opacity: 0.8;
@@ -437,25 +432,37 @@
 }
 
 .no-problems-found p:first-child {
-  color: #ffa116;
+  color: white;
   font-weight: 600;
   font-size: 1.1rem;
 }
 
 /* Table Structure - Column Width Controls */
 .problem-row .problem-si { width: 8%; }      /* Problem Number */
-.problem-row .problem-title { width: 58.5%; }  /* Problem Title */
-.problem-row .problem-score { width: 7%; }  /* Score */
-.problem-row .problem-success { width: 10.5%; } /* Success Rate */
-.problem-row .problem-difficulty { width: 8%; } /* Difficulty */
+.problem-row .problem-title { width: 55%; }  /* Problem Title */
+.problem-row .problem-score { width: 9%; }  /* Score */
+.problem-row .problem-success { 
+  width: 10%;
+  text-align: center !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+} /* Success Rate */
+.problem-row .problem-difficulty { width: 12%; } /* Difficulty */
 .problem-row .solve-btn { width: 8%; }      /* Action Button */
 
 /* Header Row Column Width Controls */
 .problem-row.header-row .problem-si { width: 8%; }
-.problem-row.header-row .problem-title { width: 65%; }
-.problem-row.header-row .problem-score { width: 6%; }
-.problem-row.header-row .problem-success { width: 9%; }
-.problem-row.header-row .problem-difficulty { width: 8%; }
+.problem-row.header-row .problem-title { width: 55%; }
+.problem-row.header-row .problem-score { width: 8%; }
+.problem-row.header-row .problem-success { 
+  width: 11%;
+  text-align: center !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.problem-row.header-row .problem-difficulty { width: 9%; }
 .problem-row.header-row .solve-btn { width: 8%; }
 
 /* Responsive Design */
@@ -493,19 +500,31 @@
   .problem-title {
     margin-left: 12px;
     font-size: 0.85rem;
+    color: var(--header-row-text);
   }
   
-  .problem-score,
   .problem-success {
     margin: 0 12px;
     min-width: 60px;
     font-size: 0.8rem;
+    text-align: center !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .problem-difficulty {
     margin: 0 12px;
     min-width: 70px;
     font-size: 0.75rem;
+    text-align: center;
+  }
+  
+  .problem-success {
+    text-align: center !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .solve-btn {
@@ -522,6 +541,7 @@
   .problem-row.header-row .problem-title {
     margin-left: 12px;
     font-size: 0.8rem;
+    color: var(--header-row-text);
   }
   
   .problem-row.header-row .problem-score,
@@ -568,6 +588,7 @@
   .problem-title {
     margin-left: 8px;
     font-size: 0.8rem;
+    color: var(--header-row-text);
   }
   
   .problem-score,
@@ -575,6 +596,7 @@
     margin: 0 8px;
     min-width: 50px;
     font-size: 0.75rem;
+    text-align: center !important;
   }
   
   .problem-difficulty {
@@ -597,6 +619,7 @@
   .problem-row.header-row .problem-title {
     margin-left: 8px;
     font-size: 0.75rem;
+    color: var(--header-row-text);
   }
   
   .problem-row.header-row .problem-score,
@@ -628,7 +651,7 @@
 
 .search-input {
   width: 100%;
-  padding: 12px 16px 12px 45px;
+  padding: 12px 16px 12px 50px;
   background: #1a1a1a;
   border: 2px solid #4a5568;
   border-radius: 8px;
@@ -636,6 +659,7 @@
   font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .search-input:focus {
@@ -649,11 +673,16 @@
 
 .search-icon {
   position: absolute;
-  left: 15px;
+  left: 16px;
   top: 50%;
   transform: translateY(-50%);
   color: #a0aec0;
   pointer-events: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .search-container:focus-within .search-icon {

@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import MonacoCodeEditor from "../components/MonacoCodeEditor";
@@ -20,6 +21,13 @@ const SolveProblem = () => {
   const [language, setLanguage] = useState('python');
   const [activeTab, setActiveTab] = useState('description');
   const [activeTestCase, setActiveTestCase] = useState(0);
+
+  // Ensure activeTestCase is within bounds when problem changes
+  useEffect(() => {
+    if (problem?.sampleTestCases?.length && activeTestCase >= problem.sampleTestCases.length) {
+      setActiveTestCase(0);
+    }
+  }, [problem, activeTestCase]);
   const [autoMode, setAutoMode] = useState(true);
   const [leftPanelWidth, setLeftPanelWidth] = useState(40);
   const [rightPanelWidth, setRightPanelWidth] = useState(60);
@@ -437,7 +445,7 @@ const SolveProblem = () => {
             "http://localhost:5000/api/problems/award-marks",
             { 
               problemId, 
-              userId: JSON.parse(localStorage.getItem("user"))?.id,
+              userId: JSON.parse(localStorage.getItem("user") || '{}')?.id,
               marks: problem.marks || 100,
               language,
               runtime
@@ -507,12 +515,9 @@ const SolveProblem = () => {
   const TabButton = ({ id, children, active, onClick }) => (
     <button
       onClick={() => onClick(id)}
-      className={`px-3 py-2 text-sm font-medium transition-colors relative ${
-        active ? 'text-white' : 'text-gray-400 hover:text-gray-200'
-      }`}
+      className={`cp-tab-button ${active ? 'active' : 'inactive'}`}
     >
       {children}
-      {active && <div className="absolute bottom-0 left-0 right-0 h-0-5 bg-orange-400" />}
     </button>
   );
 
@@ -526,9 +531,9 @@ const SolveProblem = () => {
   );
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <div className="main-container">
       {/* Header */}
-      <div className="border-b border-gray-700 px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#1A1A1A' }}>
+      <div className="cp-header-container">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
@@ -537,17 +542,15 @@ const SolveProblem = () => {
               <rect x="14" y="14" width="7" height="7"/>
               <rect x="3" y="14" width="7" height="7"/>
             </svg>
-            <span className="text-white font-medium">Problem List</span>
+            <Link to="/problem-set" className="problem-set">
+              Problem List
+            </Link>
           </div>
           <div className="flex items-center gap-1">
             <button 
               onClick={goToPreviousProblem}
               disabled={currentProblemIndex <= 0}
-              className={`p-1 transition-colors ${
-                currentProblemIndex <= 0 
-                  ? 'text-gray-600 cursor-not-allowed' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className={`cp-nav-button ${currentProblemIndex <= 0 ? 'disabled' : 'enabled'}`}
               title="Previous Problem"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -557,11 +560,7 @@ const SolveProblem = () => {
             <button 
               onClick={goToNextProblem}
               disabled={currentProblemIndex >= problemList.length - 1}
-              className={`p-1 transition-colors ${
-                currentProblemIndex >= problemList.length - 1 
-                  ? 'text-gray-600 cursor-not-allowed' 
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className={`cp-nav-button ${currentProblemIndex >= problemList.length - 1 ? 'disabled' : 'enabled'}`}
               title="Next Problem"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -572,13 +571,14 @@ const SolveProblem = () => {
         </div>
         
         {/* Run and Submit Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={handleRun}
             disabled={isRunning}
-            className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded text-sm font-medium transition-colors"
+            className="cp-run-btn"
+            title={isRunning ? "Code is running..." : "Run your code against test cases"}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polygon points="5,3 19,12 5,21"/>
             </svg>
             {isRunning ? 'Running...' : 'Run'}
@@ -586,32 +586,39 @@ const SolveProblem = () => {
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded text-sm font-medium transition-colors"
+            className="cp-submit-btn"
+            title={isSubmitting ? "Code is being submitted..." : "Submit your solution for evaluation"}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M7 13l3 3 7-7"/>
-            </svg>
             {isSubmitting ? 'Submitting...' : 'Submit'}
           </button>
         </div>
       </div>
 
       {/* Main Content - Left Panel + Right Panel with Bottom */}
-      <div ref={containerRef} className="flex-1 flex select-none">
+      <div ref={containerRef} className="solve-body">
         {/* Left Panel - Problem Section (Full Height) */}
         <div 
-          className="bg-gray-800 border-r border-gray-600 flex flex-col"
+          className="left-panel-solve"
           style={{ width: `${leftPanelWidth}%` }}
         >
           {/* Problem Header */}
-          <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex items-center justify-between">
+          <div className="left-panel-header">
             <div className="flex items-center gap-6">
               <TabButton
-                id="description"
-                active={activeTab === 'description'}
-                onClick={setActiveTab}
+                  id="description"
+                  active={activeTab === 'description'}
+                  onClick={setActiveTab}
               >
-                📝 Description
+                  <span className="flex items-center gap-1">
+                      {/* Memo Icon */}
+                      <svg aria-hidden="true" focusable="false" data-prefix="far" data-icon="memo" 
+                          role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"
+                          style={{ width: '1em', height: '1em', color: '#007bff' }} /* Fixed Blue Color */
+                      >
+                          <path fill="currentColor" d="M64 48c-8.8 0-16 7.2-16 16V448c0 8.8 7.2 16 16 16H320c8.8 0 16-7.2 16-16V64c0-8.8-7.2-16-16-16H64zM0 64C0 28.7 28.7 0 64 0H320c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V64zm120 64H264c13.3 0 24 10.7 24 24s-10.7 24-24 24H120c-13.3 0-24-10.7-24-24s10.7-24 24-24zm0 96H264c13.3 0 24 10.7 24 24s-10.7 24-24 24H120c-13.3 0-24-10.7-24-24s10.7-24 24-24zm0 96h48c13.3 0 24 10.7 24 24s-10.7 24-24 24H120c-13.3 0-24-10.7-24-24s10.7-24 24-24z"></path>
+                      </svg>
+                      Description
+                  </span>
               </TabButton>
               {submissionResult && (
                 <div className="flex items-center">
@@ -620,7 +627,7 @@ const SolveProblem = () => {
                     active={activeTab === 'result'}
                     onClick={setActiveTab}
                   >
-                    ✅ {submissionResult.status}
+                    {submissionResult.status}
                   </TabButton>
                   <button
                     onClick={() => {
@@ -637,44 +644,83 @@ const SolveProblem = () => {
                   </button>
                 </div>
               )}
+
               <TabButton
-                id="submissions"
-                active={activeTab === 'submissions'}
-                onClick={setActiveTab}
+                  id="submissions"
+                  active={activeTab === 'submissions'}
+                  onClick={setActiveTab}
               >
-                📋 My Submissions
+                  {/* SVG Icon for History/Submissions */}
+                  <span className="flex items-center gap-1">
+                      <svg aria-hidden="true" focusable="false" data-prefix="far" data-icon="clock-rotate-left" 
+                          role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+                          style={{ width: '1em', height: '1em', color: '#10b981' }} /* Fixed Green Color */
+                      >
+                          <path fill="currentColor" d="M48 106.7V56c0-13.3-10.7-24-24-24S0 42.7 0 56V168c0 13.3 10.7 24 24 24H136c13.3 0 24-10.7 24-24s-10.7-24-24-24H80.7c37-57.8 101.7-96 175.3-96c114.9 0 208 93.1 208 208s-93.1 208-208 208c-42.5 0-81.9-12.7-114.7-34.5c-11-7.3-25.9-4.3-33.3 6.7s-4.3 25.9 6.7 33.3C155.2 496.4 203.8 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C170.3 0 94.4 42.1 48 106.7zM256 128c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"></path>
+                      </svg>
+                      Submissions
+                  </span>
               </TabButton>
             </div>
           </div>
           
           {/* Problem Content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="cp-content">
             {activeTab === 'description' && (
               <>
-                <h1 className="text-xl font-semibold mb-4">
+                <h1 className="cp-problem-title">
                   {currentProblemIndex >= 0 ? `${currentProblemIndex + 1}. ` : ''}{problem.title}
                 </h1>
                 
                 <div className="flex items-center gap-2 mb-6">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    problem.difficulty === 'Easy' ? 'bg-green-600 text-white' :
-                    problem.difficulty === 'Medium' ? 'bg-yellow-600 text-white' :
-                    problem.difficulty === 'Hard' ? 'bg-red-600 text-white' :
-                    'bg-gray-600 text-orange-400'
-                  }`}>
-                    {problem.difficulty || 'Easy'}
-                  </span>
+                  <div className="difficulty-container">
+                    <span className={`${
+                      problem.difficulty === 'Easy' ? 'cp-difficulty-easy' :
+                      problem.difficulty === 'Medium' ? 'cp-difficulty-medium' :
+                      problem.difficulty === 'Hard' ? 'cp-difficulty-hard' :
+                      'cp-difficulty-easy'
+                    }`}>
+                      {problem.difficulty || 'Easy'}
+                    </span>
+                    {problem.score && (
+                      <span className="difficulty-points">
+                        {problem.score}
+                      </span>
+                    )}
+                    {(problem.tags || problem.topics) && (
+                      <div className="tags-container">
+                        {(problem.tags || problem.topics || []).map((tag, index) => (
+                          <span key={index} className="tag">
+                            {typeof tag === 'string' ? tag : tag.name || tag.tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-4 text-gray-300 text-sm leading-relaxed">
-                  <p>{problem.problemStatement || problem.description}</p>
+                <div className="space-y-4">
+                  <p className="cp-problem-description">{problem.problemStatement || problem.description}</p>
+                  {problem.inputFormat && (
+                    <div className="mt-6">
+                      <h3 className="cp-section-title">Input Format:</h3>
+                      <div className="cp-section-content">{problem.inputFormat}</div>
+                    </div>
+                  )}
+
+                  {problem.outputFormat && (
+                    <div className="mt-6">
+                      <h3 className="cp-section-title">Output Format:</h3>
+                      <div className="cp-section-content">{problem.outputFormat}</div>
+                    </div>
+                  )}
                   
                   {problem.sampleTestCases && problem.sampleTestCases.length > 0 && (
                     <>
                       {problem.sampleTestCases.map((testCase, index) => (
                         <div key={index} className="mt-6">
-                          <h3 className="text-white font-semibold mb-2">Example {index + 1}:</h3>
-                          <div className="bg-gray-900 border border-gray-600 rounded p-3 font-mono text-xs text-gray-200">
+                          <h3 className="cp-section-title">Example {index + 1}:</h3>
+                          <div className="cp-example-content">
                             <div><strong>Input:</strong> {testCase.input}</div>
                             <div><strong>Output:</strong> {testCase.expectedOutput}</div>
                             {testCase.explanation && (
@@ -688,8 +734,8 @@ const SolveProblem = () => {
 
                   {problem.constraints && (
                     <div className="mt-6">
-                      <h3 className="text-white font-semibold mb-2">Constraints:</h3>
-                      <div className="text-xs">{problem.constraints}</div>
+                      <h3 className="cp-section-title">Constraints:</h3>
+                      <div className="cp-constraints-content">{problem.constraints}</div>
                     </div>
                   )}
                 </div>
@@ -701,7 +747,7 @@ const SolveProblem = () => {
                 <div className="flex items-center gap-3 mb-6">
                   <button 
                     onClick={() => setActiveTab('description')}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+                    className="cp-back-button"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M19 12H5M12 19L5 12L12 5"/>
@@ -713,12 +759,12 @@ const SolveProblem = () => {
                 <div className="space-y-6">
                   {/* Status Header */}
                   <div className="flex items-center gap-3">
-                    <span className={`text-2xl font-bold ${
-                      submissionResult.status === 'Accepted' ? 'text-green-400' : 'text-red-400'
+                    <span className={`cp-status-text-large ${
+                      submissionResult.status === 'Accepted' ? 'cp-status-accepted' : 'cp-status-wrong'
                     }`}>
                       {submissionResult.status}
                     </span>
-                    <span className="text-gray-400 text-sm">{submissionResult.testCases}</span>
+                    <span className="cp-status-text-small">{submissionResult.testCases}</span>
                   </div>
 
                   {/* User Info */}
@@ -726,7 +772,7 @@ const SolveProblem = () => {
                     <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
                       👤
                     </div>
-                    <span>{JSON.parse(localStorage.getItem("user") || '{}').username || 'User'}</span>
+                    <span>{JSON.parse(localStorage.getItem("user") || '{}')?.username || 'User'}</span>
                     <span>submitted at {submissionResult.submittedAt}</span>
                   </div>
 
@@ -741,8 +787,8 @@ const SolveProblem = () => {
                         </svg>
                         <span className="text-gray-400 text-sm">Runtime</span>
                       </div>
-                      <div className="text-2xl font-bold text-white mb-1">{submissionResult.runtime} <span className="text-sm text-gray-400">ms</span></div>
-                      <div className="text-xs text-gray-500">Beats {submissionResult.beats}</div>
+                      <div className="cp-metric-value">{submissionResult.runtime} <span className="cp-metric-unit">ms</span></div>
+                      <div className="cp-metric-beats">Beats {submissionResult.beats}</div>
                     </div>
 
                     {/* Memory */}
@@ -754,8 +800,8 @@ const SolveProblem = () => {
                         </svg>
                         <span className="text-gray-400 text-sm">Memory</span>
                       </div>
-                      <div className="text-2xl font-bold text-white mb-1">{submissionResult.memory}</div>
-                      <div className="text-xs text-gray-500">Beats {submissionResult.beats}</div>
+                      <div className="cp-metric-value">{submissionResult.memory}</div>
+                      <div className="cp-metric-beats">Beats {submissionResult.beats}</div>
                     </div>
                   </div>
 
@@ -765,36 +811,36 @@ const SolveProblem = () => {
 
             {activeTab === 'submissions' && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">My Submissions</h2>
+                <h2 className="cp-submissions-title">My Submissions</h2>
                 {userSubmissions.length === 0 ? (
-                  <div className="text-gray-400 text-sm text-center py-8">
+                  <div className="cp-submissions-empty">
                     <div className="mb-2">📝</div>
                     <p>No submissions yet</p>
-                    <p className="text-xs mt-1">Submit your solution to see it here</p>
+                    <p className="cp-submissions-empty-small">Submit your solution to see it here</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full cp-submissions-table">
                       <thead>
                         <tr className="border-b border-gray-600">
-                          <th className="text-left py-3 px-2 text-gray-400 font-medium">Status ▼</th>
-                          <th className="text-left py-3 px-2 text-gray-400 font-medium">Language ▼</th>
+                          <th className="text-left py-3 px-2 text-gray-400 font-medium">Status</th>
+                          <th className="text-left py-3 px-2 text-gray-400 font-medium">Language</th>
                           <th className="text-left py-3 px-2 text-gray-400 font-medium">Runtime</th>
                           <th className="text-left py-3 px-2 text-gray-400 font-medium">Memory</th>
-                          <th className="text-left py-3 px-2 text-gray-400 font-medium">Code</th>
+                          <th className="text-left py-3 pl-4 text-gray-400 font-medium">Code</th>
                         </tr>
                       </thead>
                       <tbody>
                         {userSubmissions.map((submission, index) => (
                           <tr key={submission._id || index} className="border-b border-gray-700 hover:bg-gray-800 transition-colors">
                             <td className="py-3 px-2">
-                              <div className="flex flex-col">
-                                <span className={`text-sm font-medium ${
-                                  submission.isSuccess ? 'text-green-400' : 'text-red-400'
+                              <div className="flex flex-col gap-0">
+                                <span className={`cp-submission-status ${
+                                  submission.isSuccess ? 'accepted' : 'wrong'
                                 }`}>
                                   {submission.isSuccess ? 'Accepted' : 'Wrong Answer'}
                                 </span>
-                                <span className="text-xs text-gray-500 mt-1">
+                                <span className="cp-submission-time">
                                   {new Date(submission.createdAt || submission.submittedAt).toLocaleDateString('en-US', { 
                                     month: 'short', 
                                     day: 'numeric', 
@@ -804,7 +850,7 @@ const SolveProblem = () => {
                               </div>
                             </td>
                             <td className="py-3 px-2">
-                              <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">
+                              <span className="cp-submission-language">
                                 {submission.language === 'python' ? 'Python3' :
                                  submission.language === 'cpp' ? 'C++' :
                                  submission.language === 'java' ? 'Java' :
@@ -818,60 +864,58 @@ const SolveProblem = () => {
                                   <circle cx="12" cy="12" r="10"/>
                                   <polyline points="12,6 12,12 16,14"/>
                                 </svg>
-                                <span className="text-xs">
+                                <span className="cp-submission-runtime">
                                   {submission.runtime ? `${submission.runtime} ms` : '0 ms'}
                                 </span>
                               </div>
                             </td>
                             <td className="py-3 px-2">
                               <div className="flex items-center text-gray-400">
-                                <svg width="14" height="14" className="mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                {/*<svg width="14" height="14" className="mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M9 7h6l1 9H8l1-9z"/>
                                   <path d="M8 7V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1"/>
-                                </svg>
-                                <span className="text-xs">
+                                </svg>*/}
+                                <span className="cp-submission-memory">
                                   {submission.memory || '18.1 MB'}
                                 </span>
                               </div>
                             </td>
-                            <td className="py-3 px-2">
-                              <div className="flex items-center gap-2">
-                                <button
+                            <td className="py-3 pl-4 pr-2">
+                              <div className="flex items-center gap-0">
+                              <button
                                   onClick={() => {
-                                    if (submission.code) {
-                                      setCode(submission.code);
-                                      if (submission.language) {
-                                        setLanguage(submission.language);
+                                      if (submission.code) {
+                                          setCode(submission.code);
+                                          if (submission.language) {
+                                              setLanguage(submission.language);
+                                          }
                                       }
-                                    }
                                   }}
-                                  className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded border border-blue-400 hover:border-blue-300 transition-colors"
+                                  className="cp-submission-actions"
                                   title="Load this code into the editor"
                                 >
                                   Edit
-                                </button>
-                                <details className="inline">
-                                  <summary className="text-gray-400 hover:text-white text-xs cursor-pointer">
-                                    View
-                                  </summary>
+                              </button>
+                                {/*<details className="inline">
                                   <div className="absolute z-10 mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 max-w-md max-h-64 overflow-auto shadow-lg">
                                     <div className="flex justify-between items-center mb-2">
-                                      <span className="text-xs text-gray-400">Submitted Code</span>
+                                      <span className="cp-submission-actions text-gray-400">Submitted Code</span>
                                       <button
                                         onClick={(e) => {
                                           e.preventDefault();
+                                          // @ts-ignore
                                           e.target.closest('details').removeAttribute('open');
                                         }}
-                                        className="text-gray-400 hover:text-white text-xs"
+                                        className="text-gray-400 hover:text-white cp-submission-actions"
                                       >
                                         ✕
                                       </button>
                                     </div>
-                                    <pre className="text-xs text-gray-300 overflow-x-auto">
+                                    <pre className="cp-submission-code-view">
                                       <code>{submission.code || 'No code available'}</code>
                                     </pre>
                                   </div>
-                                </details>
+                                </details>*/}
                               </div>
                             </td>
                           </tr>
@@ -893,17 +937,28 @@ const SolveProblem = () => {
 
         {/* Right Section - Code Editor + Bottom Panel */}
         <div 
-          className="flex flex-col"
+          className="right-panel-solve"
           style={{ width: `${rightPanelWidth}%` }}
         >
           {/* Code Editor Panel */}
           <div 
-            className="bg-gray-800 flex flex-col"
+            className="right-top-solve"
             style={{ height: `${100 - bottomPanelHeight}%` }}
           >
             {/* Code Header */}
-            <div className="bg-gray-700 px-4 py-2 border-b border-gray-600 flex items-center justify-between">
-              <div className="text-sm font-medium">🧑‍💻 Code</div>
+            <div className="right-top-header">
+            <div className="text-sm font-medium code-badge">
+    <span
+        >
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M24 12l-5.657 5.657-1.414-1.414L21.172 12l-4.243-4.243 1.414-1.414L24 12zM2.828 12l4.243 4.243-1.414 1.414L0 12l5.657-5.657L7.07 7.757 2.828 12zm6.96 9H7.66l6.552-18h2.128L9.788 21z"
+                fill="currentColor"
+            ></path>
+        </svg>
+        Code
+    </span>
+</div>
               <div className="flex items-center gap-4">
                 <select
                   value={language}
@@ -918,19 +973,12 @@ const SolveProblem = () => {
                   ))}
                 </select>
                 <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span>🔒 Auto</span>
+                  <span>Auto Save</span>
                   <button
                     onClick={() => setAutoMode(!autoMode)}
-                    className={`w-8 h-4 rounded-full transition-colors relative ${
-                      autoMode ? 'bg-orange-400' : 'bg-gray-600'
-                    }`}
-                  >
-                    <div className={`w-3 h-3 bg-white rounded-full absolute top-0-5 transition-transform ${
-                      autoMode ? 'translate-x-4' : 'translate-x-0-5'
-                    }`} />
-                  </button>
+                    className={`cp-toggle-switch ${autoMode ? 'active' : 'inactive'}`}
+                  />
                 </div>
-                <span className="text-xs text-gray-500">Saved</span>
               </div>
             </div>
 
@@ -959,30 +1007,22 @@ const SolveProblem = () => {
 
           {/* Bottom Panel - Test Cases (Only under right section) */}
           <div 
-            className="bg-gray-700 border-t border-gray-600 flex flex-col"
-            style={{ height: `${bottomPanelHeight}%` }}
+            className="right-bottom-solve"
+            style={{ height: `${bottomPanelHeight}%`, backgroundColor: '#1e1e1e' }}
           >
             {/* Test Header - Two Rows */}
             <div className="border-b border-gray-600">
               {/* First Row - Testcase and Test Result tabs */}
-              <div className="px-4 py-3 border-b border-gray-700 flex items-center gap-6">
+              <div className="right-bottom-header">
                 <button
                   onClick={() => setActiveTestTab('testcase')}
-                  className={`text-sm font-medium transition-colors ${
-                    activeTestTab === 'testcase' 
-                      ? 'text-green-400' 
-                      : 'text-gray-400 hover:text-gray-200'
-                  }`}
+                  className={`cp-test-tab-button ${activeTestTab === 'testcase' ? 'active' : 'inactive'}`}
                 >
                   Testcase
                 </button>
                 <button
                   onClick={() => setActiveTestTab('result')}
-                  className={`text-sm font-medium transition-colors ${
-                    activeTestTab === 'result' 
-                      ? 'text-green-400' 
-                      : 'text-gray-400 hover:text-gray-200'
-                  }`}
+                  className={`cp-test-tab-button ${activeTestTab === 'result' ? 'active' : 'inactive'}`}
                 >
                   Test Result
                 </button>
@@ -990,16 +1030,12 @@ const SolveProblem = () => {
               
               {/* Second Row - Case buttons (only show in Testcase tab) */}
               {activeTestTab === 'testcase' && (
-                <div className="px-4 py-2 flex items-center gap-2">
+                <div className="px-3 py-2 pt-4 flex items-center gap-3">
                   {problem?.sampleTestCases?.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setActiveTestCase(index)}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                        activeTestCase === index
-                          ? 'bg-orange-400 text-black'
-                          : 'bg-gray-600 text-white hover:bg-gray-500'
-                      }`}
+                      className={`cp-test-case-button ${activeTestCase === index ? 'active' : 'inactive'}`}
                     >
                       Case {index + 1}
                     </button>
@@ -1010,16 +1046,12 @@ const SolveProblem = () => {
 
             {/* Test Content */}
             <div 
-              className="flex-1 p-4 overflow-y-scroll" 
-              style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#6B7280 #374151'
-              }}
+              className="flex-1 p-4 overflow-y-scroll cp-scrollbar-thin"
             >
               {activeTestTab === 'testcase' && problem?.sampleTestCases?.[activeTestCase] && (
                 <div>
-                  <div className="bg-gray-800 border border-gray-600 rounded p-3 font-mono text-sm text-white">
-                    {problem.sampleTestCases[activeTestCase].input}
+                  <div className="bg-gray-900 border border-gray-600 rounded p-3 font-mono text-sm text-white">
+                    {problem.sampleTestCases[activeTestCase]?.input || 'No input available'}
                   </div>
                 </div>
               )}
@@ -1030,12 +1062,12 @@ const SolveProblem = () => {
                     <div className="space-y-3">
                       {/* Overall Result */}
                       <div className="flex items-center gap-4 mb-3">
-                        <span className={`text-base font-medium ${
-                          output === 'Accepted' ? 'text-green-400' : 'text-red-400'
+                        <span className={`cp-result-status ${
+                          output === 'Accepted' ? 'accepted' : 'wrong'
                         }`}>
                           {output}
                         </span>
-                        <span className="text-gray-400 text-sm">{verdict}</span>
+                        <span className="cp-verdict-text">{verdict}</span>
                       </div>
 
                       {/* Case Results - Simple */}
@@ -1044,14 +1076,10 @@ const SolveProblem = () => {
                           <button
                             key={index}
                             onClick={() => setActiveTestCase(index)}
-                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                              activeTestCase === index
-                                ? 'bg-orange-400 text-black'
-                                : 'bg-gray-600 text-white hover:bg-gray-500'
-                            }`}
+                            className={`cp-test-case-button ${activeTestCase === index ? 'active' : 'inactive'}`}
                           >
-                            <div className={`w-2 h-2 rounded-full ${
-                              result.passed ? 'bg-green-400' : 'bg-red-400'
+                            <div className={`cp-case-indicator ${
+                              result.passed ? 'passed' : 'failed'
                             }`}></div>
                             Case {result.caseNumber}
                           </button>
@@ -1064,13 +1092,13 @@ const SolveProblem = () => {
                           <div>
                             <div className="text-xs text-gray-400 mb-1">Input:</div>
                             <div className="bg-gray-800 border border-gray-600 rounded p-2 font-mono text-sm text-white">
-                              {testResults[activeTestCase].input}
+                              {testResults[activeTestCase]?.input || 'No input'}
                             </div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-400 mb-1">Output:</div>
                             <div className="bg-gray-800 border border-gray-600 rounded p-2 font-mono text-sm text-white">
-                              {testResults[activeTestCase].actualOutput}
+                              {testResults[activeTestCase]?.actualOutput || 'No output'}
                             </div>
                           </div>
                         </div>

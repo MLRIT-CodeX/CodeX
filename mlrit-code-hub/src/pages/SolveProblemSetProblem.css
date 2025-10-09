@@ -1459,6 +1459,17 @@
   .rerun-btn:active {
     background: #252526;
   }
+
+  /* Right Panel Header */
+  .right-panel-header {
+    background-color: #ffffff;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #4b5563;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+  }
   
   /* Scrollbar for submission code */
   .submission-code pre::-webkit-scrollbar {

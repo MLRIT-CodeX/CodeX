@@ -6,6 +6,14 @@ import './login.css'; // We'll reuse the same styles
 
 const Register = () => {
   const location = useLocation();
+  const [showPopup, setShowPopup] = useState(false);
+  
+  const handleLinkClick = (e) => {
+    e.preventDefault();
+    setShowPopup(true);
+    setTimeout(() => setShowPopup(false), 3000);
+  };
+
   function getQueryParam(param) {
     const params = new URLSearchParams(location.search);
     return params.get(param) || '';
@@ -64,6 +72,25 @@ const Register = () => {
 
   return (
     <div className="auth-container">
+      {/* Navigation Bar */}
+      <div className="auth-nav">
+        <Link to="/" className="go-back-btn">
+          <svg className="back-arrow" viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          </svg>
+          Go Back
+        </Link>
+      </div>
+
+      {/* Login Popup */}
+      {showPopup && (
+        <div className="login-popup">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          Please login to access this feature
+        </div>
+      )}
       <div className="auth-background">
         <div className="gradient-sphere gradient-sphere-1"></div>
         <div className="gradient-sphere gradient-sphere-2"></div>
@@ -153,21 +180,6 @@ const Register = () => {
               required
             />
             <label htmlFor="confirmPassword" className="form-label">Confirm password</label>
-            <div className="form-highlight"></div>
-          </div>
-
-          <div className="form-group">
-            <select
-              className="form-input"
-              id="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-            >
-              <option value="student">Student</option>
-              <option value="admin">Admin</option>
-            </select>
-            <label htmlFor="role" className="form-label">Role</label>
             <div className="form-highlight"></div>
           </div>
 

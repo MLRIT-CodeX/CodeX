@@ -111,7 +111,7 @@ const Navbar = () => {
                 Compiler
               </Link>
               <Link to="/problem-set" className={`nav-link ${isActive('/problem-set') ? 'active' : ''}`}>
-                Problem Set
+                Problems
               </Link>
               <Link to="/contests" className={`nav-link ${isActive('/contests') ? 'active' : ''}`}>
                 Contests
@@ -123,29 +123,23 @@ const Navbar = () => {
           )}
         </div>
       </div>
-      <div className="nav-right">
-        <div className="user-profile" ref={dropdownRef}>
+        <div className="user-profile">
           <div className="profile-info" onClick={() => setDropdownOpen(!dropdownOpen)}>
             <img 
               src={user?.profilePic ? `http://localhost:5000${user.profilePic}` : "/default-profile.png"}
               alt="Profile" 
               className="profile-avatar" 
             />
-            <span className="profile-name">{user?.name || 'User'}</span>
           </div>
           {dropdownOpen && (
             <div className="dropdown-menu">
               <Link to="/profile" onClick={() => setDropdownOpen(false)}>
-                👤 Profile
+                Profile
               </Link>
-              <Link to="/settings" onClick={() => setDropdownOpen(false)}>
-                ⚙️ Settings
-              </Link>
-              <button onClick={handleLogout}>🔓 Logout</button>
+              <button onClick={handleLogout}>Logout</button>
             </div>
           )}
         </div>
-      </div>
     </nav>
   );
 };

@@ -10,15 +10,121 @@ const CodeEditor = () => {
   const [loading, setLoading] = useState(false);
   const [time, setTime] = useState(null);
   const [memory, setMemory] = useState(null);
-  const [isResizing, setIsResizing] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(75);
-  
-  // Refs for cleanup and throttling
-  const resizeTimeoutRef = useRef(null);
-  const animationFrameRef = useRef(null);
   const containerRef = useRef(null);
-  const resizeHandleRef = useRef(null);
   const editorContainerRef = useRef(null);
+  const leftPanelRef = useRef(null);
+  const rightPanelRef = useRef(null);
+  const inputAreaRef = useRef(null);
+  const outputAreaRef = useRef(null);
+  
+  // Vertical resizing (left-right panels)
+  const [isResizing, setIsResizing] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState('50%');
+  const minPanelWidth = 200; // Minimum width in pixels
+  const maxPanelWidth = 800; // Maximum width in pixels
+  
+  // Horizontal resizing (input-output areas)
+  const [isHorizontalResizing, setIsHorizontalResizing] = useState(false);
+  const [inputAreaHeight, setInputAreaHeight] = useState('50%');
+  const minAreaHeight = 100; // Minimum height in pixels
+  const maxAreaHeight = 500; // Maximum height in pixels
+  
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Vertical resize handler (left-right panels)
+  const resizeVertical = useCallback((e) => {
+    if (isResizing && leftPanelRef.current) {
+      requestAnimationFrame(() => {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const containerWidth = containerRect.width;
+        let newWidth = e.clientX - containerRect.left;
+        newWidth = Math.max(minPanelWidth, Math.min(newWidth, maxPanelWidth));
+        
+        leftPanelRef.current.style.width = `${newWidth}px`;
+        rightPanelRef.current.style.flex = `0 0 calc(100% - ${newWidth}px - 8px)`;
+        setLeftPanelWidth(`${(newWidth / containerWidth) * 100}%`);
+      });
+    }
+  }, [isResizing, minPanelWidth, maxPanelWidth]);
+
+  // Horizontal resize handler (input-output areas)
+  const resizeHorizontal = useCallback((e) => {
+    if (isHorizontalResizing && inputAreaRef.current) {
+      requestAnimationFrame(() => {
+        const containerRect = rightPanelRef.current.getBoundingClientRect();
+        const containerHeight = containerRect.height;
+        const newHeight = e.clientY - containerRect.top;
+        
+        // Apply constraints
+        const constrainedHeight = Math.max(minAreaHeight, Math.min(newHeight, maxAreaHeight));
+        
+        // Use pixel values during resize for better performance
+        inputAreaRef.current.style.height = `${constrainedHeight}px`;
+        
+        // Update state for consistency
+        setInputAreaHeight(`${(constrainedHeight / containerHeight) * 100}%`);
+      });
+    }
+  }, [isHorizontalResizing, minAreaHeight, maxAreaHeight]);
+
+  // Add event listeners for vertical resizing (left-right panels)
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isResizing) {
+        e.preventDefault();
+        resizeVertical(e);
+      } else if (isHorizontalResizing) {
+        e.preventDefault();
+        resizeHorizontal(e);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing || isHorizontalResizing) {
+        setIsResizing(false);
+        setIsHorizontalResizing(false);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+      }
+    };
+
+    if (isResizing) {
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+      leftPanelRef.current.style.transition = 'none';
+      rightPanelRef.current.style.transition = 'none';
+    } else if (isHorizontalResizing) {
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'row-resize';
+      if (inputAreaRef.current) {
+        inputAreaRef.current.style.transition = 'none';
+      }
+    } else {
+      if (leftPanelRef.current && rightPanelRef.current) {
+        leftPanelRef.current.style.transition = 'width 0.2s ease-out';
+        rightPanelRef.current.style.transition = 'flex 0.2s ease-out';
+      }
+      if (inputAreaRef.current) {
+        inputAreaRef.current.style.transition = 'height 0.2s ease-out';
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: false });
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isResizing, isHorizontalResizing, resizeVertical, resizeHorizontal]);
 
   useEffect(() => {
     const savedCode = localStorage.getItem(`code-${language}`);
@@ -50,120 +156,7 @@ int main() {
   }, [code, language]);
 
 
-  // Debounced resize function
-  const debouncedResize = useCallback((newWidth) => {
-    if (resizeTimeoutRef.current) {
-      clearTimeout(resizeTimeoutRef.current);
-    }
 
-    resizeTimeoutRef.current = setTimeout(() => {
-      setLeftPanelWidth(newWidth);
-    }, 16); // ~60fps
-  }, []);
-
-  // Mouse move handler
-  const handleMouseMove = useCallback((e) => {
-    if (!isResizing || !containerRef.current) return;
-
-    // Cancel any pending animation frame
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    // Use requestAnimationFrame for smooth updates
-    animationFrameRef.current = requestAnimationFrame(() => {
-      const container = containerRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const newLeftWidth = e.clientX - containerRect.left;
-      const containerWidth = containerRect.width;
-      
-      // Limit resize range (20% to 80% of container width)
-      const minWidth = containerWidth * 0.2;
-      const maxWidth = containerWidth * 0.8;
-      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newLeftWidth));
-      
-      const leftPercentage = (clampedWidth / containerWidth) * 100;
-      
-      // Update resize handle position
-      if (resizeHandleRef.current) {
-        const resizeHandle = resizeHandleRef.current;
-        resizeHandle.style.left = `calc(${leftPercentage}% - 2px)`;
-      }
-      
-      // Debounce the state update
-      debouncedResize(leftPercentage);
-    });
-  }, [isResizing, debouncedResize]);
-
-  // Mouse down handler
-  const handleMouseDown = useCallback((e) => {
-    if (e.target.classList.contains('resize-handle')) {
-      setIsResizing(true);
-      e.preventDefault();
-    }
-  }, []);
-
-  // Mouse up handler
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-    
-    // Clear any pending operations
-    if (resizeTimeoutRef.current) {
-      clearTimeout(resizeTimeoutRef.current);
-      resizeTimeoutRef.current = null;
-    }
-    
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-  }, []);
-
-  // Resize functionality with proper cleanup
-  useEffect(() => {
-    const container = containerRef.current;
-    const resizeHandle = resizeHandleRef.current;
-
-    if (!container || !resizeHandle) return;
-
-    // Add event listeners
-    document.addEventListener('mousedown', handleMouseDown, { passive: false });
-    document.addEventListener('mousemove', handleMouseMove, { passive: true });
-    document.addEventListener('mouseup', handleMouseUp, { passive: true });
-
-    // Cleanup function
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      
-      // Clear any pending operations
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-        resizeTimeoutRef.current = null;
-      }
-      
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, [handleMouseDown, handleMouseMove, handleMouseUp]);
-
-  // Additional cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-        resizeTimeoutRef.current = null;
-      }
-      
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, []);
 
 
   const handleRunCode = async () => {
@@ -195,26 +188,25 @@ int main() {
 
   return (
     <div className="online-compiler">
-      <div 
-        className="compiler-body" 
-        ref={containerRef}
-        style={{
-          gridTemplateColumns: `${leftPanelWidth}% ${100 - leftPanelWidth}%`
-        }}
-      >
-        <div className="left-panel">
+      <div className="compiler-body" ref={containerRef}>
+        <div 
+          className="left-panel" 
+          ref={leftPanelRef}
+          style={{ width: leftPanelWidth, minWidth: `${minPanelWidth}px` }}
+        >
           <div className="top-bar">
-            <div className="compiler-title">
-              <h3>Online Code Editor</h3>
-            </div>
-            <button onClick={handleRunCode} disabled={loading}>
-              {loading ? "Running..." : "Run"}
+            <button 
+              onClick={handleRunCode} 
+              disabled={loading}
+              className="run-button"
+            >
+              Run
             </button>
           </div>
-          <div className="monaco-editor-container" ref={editorContainerRef}>
+          <div className="flex-1 flex flex-col editor-container" ref={editorContainerRef}>
             <MonacoCodeEditor
               language={language}
-              allowedLanguages={null} // Allow all languages
+              allowedLanguages={null}
               onLanguageChange={setLanguage}
               value={code}
               onChange={setCode}
@@ -223,15 +215,24 @@ int main() {
             />
           </div>
         </div>
-        
         <div 
           className="resize-handle" 
-          ref={resizeHandleRef}
-          style={{ left: `calc(${leftPanelWidth}% - 2px)` }}
-        ></div>
-        
-        <div className="right-panel">
-          <div className="input-area">
+          onMouseDown={startResizing}
+          style={{ cursor: 'col-resize' }}
+        />
+        <div 
+          className="right-panel"
+          ref={rightPanelRef}
+          style={{ 
+            flex: `0 0 calc(100% - ${leftPanelWidth} - 8px)`,
+            minWidth: `${minPanelWidth}px`
+          }}
+        >
+          <div 
+            className="input-area"
+            ref={inputAreaRef}
+            style={{ height: inputAreaHeight }}
+          >
             <h4>Input</h4>
             <textarea
               className="input-box"
@@ -240,6 +241,12 @@ int main() {
               placeholder="Enter your input here..."
             />
           </div>
+          
+          <div 
+            className="resize-handle-horizontal"
+            onMouseDown={() => setIsHorizontalResizing(true)}
+          />
+          
           <div className="output-area">
             <h4>Output</h4>
             <div className="output-box">

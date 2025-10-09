@@ -418,7 +418,7 @@ const MonacoCodeEditor = ({
   };
 
   return (
-    <div style={{ height, border: '2px solid #8b5cf6', borderRadius: '0.75rem', overflow: 'hidden' }}>
+    <div style={{ height, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #4b5563' }}>
       {showLanguageSelector && (
         <div style={{ 
           background: '#374151', 
