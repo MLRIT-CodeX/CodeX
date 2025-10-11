@@ -468,8 +468,8 @@ int main() {
       return;
     }
 
-    // Calculate time taken
-    const timeTaken = testStartTime ? Math.floor((new Date() - testStartTime) / 1000) : 0;
+    // Calculate time taken with proper type checking
+    const timeTaken = testStartTime ? Math.floor((new Date().getTime() - new Date(testStartTime).getTime()) / 1000) : 0;
 
     // Submit results to backend
     try {
@@ -579,8 +579,8 @@ int main() {
   const handleForceSubmit = async () => {
     setShowSubmitWarning(false);
     
-    // Calculate time taken
-    const timeTaken = testStartTime ? Math.floor((new Date() - testStartTime) / 1000) : 0;
+    // Calculate time taken with proper type checking
+    const timeTaken = testStartTime ? Math.floor((new Date().getTime() - new Date(testStartTime).getTime()) / 1000) : 0;
     
     // Submit empty results to backend
     try {
@@ -924,9 +924,6 @@ int main() {
           
           <div className="navbar-center">
             <div className="test-title">{topic?.title || 'Module Test'}</div>
-            <div className="question-counter">
-              Question {currentQuestion + 1} / {(allQuestions && allQuestions.length) || 0}
-            </div>
           </div>
         
         <div className="navbar-right">
@@ -952,14 +949,6 @@ int main() {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Slim Progress Bar */}
-      <div className="test-progress-bar">
-        <div 
-          className="progress-fill"
-          style={{ width: `${allQuestions.length ? ((currentQuestion + 1) / allQuestions.length) * 100 : 0}%` }}
-        ></div>
       </div>
 
 
@@ -1022,7 +1011,7 @@ int main() {
                   
                   {allQuestions[currentQuestion]?.constraints && (
                     <div className="constraints-section">
-                      <h3>Constraints:</h3>
+                      <h3>Hint:</h3>
                       <p>{allQuestions[currentQuestion]?.constraints}</p>
                     </div>
                   )}
@@ -1258,15 +1247,6 @@ int main() {
       {/* Navigation - Only show when not showing results */}
       {!showResults && (
         <div className="test-navigation">
-          <button
-            onClick={prevQuestion}
-            disabled={currentQuestion === 0}
-            className="nav-btn prev-btn"
-          >
-            <ArrowLeft size={20} />
-            Previous
-          </button>
-
           <div className="question-indicators">
             {(allQuestions || []).map((question, index) => (
               <button
@@ -1287,24 +1267,17 @@ int main() {
             ))}
           </div>
 
-          {allQuestions.length > 0 && currentQuestion === allQuestions.length - 1 ? (
-            <button
-              onClick={handleSubmitTest}
-              className="nav-btn submit-btn"
-disabled={false}
-            >
-              Submit Test
-              <CheckCircle size={20} />
-            </button>
-          ) : (
-            <button
-              onClick={nextQuestion}
-              className="nav-btn next-btn"
-            >
-              Next
-              <ArrowRight size={20} />
-            </button>
-          )}
+          {allQuestions.length > 0 && currentQuestion === allQuestions.length - 1 && (
+              <button
+                onClick={handleSubmitTest}
+                className="nav-btn submit-btn"
+                // Consider adding a proper disabled check here (e.g., if any required answers are missing)
+                disabled={false} 
+              >
+                Submit Test
+                <CheckCircle size={20} />
+              </button>
+            )}
         </div>
       )}
     </div>
