@@ -129,7 +129,6 @@ const CourseLeaderboard = () => {
     if (loading && !lastUpdated) {
         return (
             <div className="course-leaderboard-container">
-                <div className="loading-spinner">Loading course leaderboard...</div>
             </div>
         );
     }
