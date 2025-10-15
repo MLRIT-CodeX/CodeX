@@ -53,6 +53,24 @@
   gap: 8px;
 }
 
+.user-profile-nav {
+  display: flex;
+  align-items: center;
+  padding-top: 1rem;
+}
+
+.profile-avatar-nav {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+  border: 2px solid var(--color-accent1);
+  display: block; 
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .nav-profile-pic {
   width: 30px;
   height: 30px;

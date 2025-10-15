@@ -123,12 +123,12 @@ const Navbar = () => {
           )}
         </div>
       </div>
-        <div className="user-profile">
+        <div className="user-profile-nav">
           <div className="profile-info" onClick={() => setDropdownOpen(!dropdownOpen)}>
             <img 
               src={user?.profilePic ? `http://localhost:5000${user.profilePic}` : "/default-profile.png"}
               alt="Profile" 
-              className="profile-avatar" 
+              className="profile-avatar-nav" 
             />
           </div>
           {dropdownOpen && (
