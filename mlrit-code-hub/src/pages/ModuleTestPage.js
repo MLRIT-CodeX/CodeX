@@ -916,10 +916,10 @@ int main() {
         {/* Custom Test Navbar */}
         <div className="test-navbar">
           <div className="navbar-left">
-            <div className="test-status">
-              <span className="status-indicator">●</span>
-              <span className="status-text">Not Attempted</span>
-            </div>
+            <div className="timer-display">
+            <Clock size={16} />
+            <span className="timer-text">{formatTime(timeLeft)}</span>
+          </div>
           </div>
           
           <div className="navbar-center">
@@ -927,10 +927,6 @@ int main() {
           </div>
         
         <div className="navbar-right">
-          <div className="timer-display">
-            <Clock size={16} />
-            <span className="timer-text">{formatTime(timeLeft)}</span>
-          </div>
           <div className="nav-controls">
             <button 
               onClick={prevQuestion} 
