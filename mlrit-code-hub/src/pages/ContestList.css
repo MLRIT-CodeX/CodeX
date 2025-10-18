@@ -2,21 +2,25 @@
     max-width: 800px;
     margin: 0 auto;
     padding: var(--spacing-3xl);
-    background: #1e293b;
+    background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
     border-radius: 8px;
     color: white;
     padding-top: var(--content-top-padding);
   }
   
   .contest-list h2 {
-    color: #ffa116;
+    text-shadow: 
+      0 0 8px rgba(255, 255, 255, 0.4),
+      0 0 15px rgba(255, 255, 255, 0.1);
+    background: white;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 20px;
   }
   
   .contest-list li {
     margin-bottom: 20px;
     padding: 15px;
-    background: #0f172a;
+    background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
     border-radius: 6px;
   }
   

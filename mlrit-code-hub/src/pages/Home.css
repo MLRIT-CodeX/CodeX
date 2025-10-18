@@ -126,6 +126,7 @@
   color: white;
   background: linear-gradient(to right, white, var(--text-secondary));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -245,6 +246,7 @@
   margin-bottom: 0.5rem;
   background: linear-gradient(to right, var(--text-primary), var(--mlrit-purple-light));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -282,6 +284,7 @@
   margin-bottom: 0.5rem;
   background: linear-gradient(to right, var(--text-primary), var(--mlrit-purple-light));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -319,6 +322,7 @@
   margin-bottom: 1.5rem;
   background: linear-gradient(to right, var(--text-primary), var(--mlrit-purple-light));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

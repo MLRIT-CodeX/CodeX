@@ -270,7 +270,7 @@ int main() {
     console.log('Setting up enterprise security suite...');
     
     // Core security listeners
-    document.addEventListener('contextmenu', preventRightClick);
+    // document.addEventListener('contextmenu', preventRightClick); commentedbyme
     document.addEventListener('keydown', preventKeyboardShortcuts);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('selectstart', preventSelection);
@@ -303,7 +303,7 @@ int main() {
   };
 
   const cleanupSecurityListeners = () => {
-    document.removeEventListener('contextmenu', preventRightClick);
+    // document.removeEventListener('contextmenu', preventRightClick); commentedbyme
     document.removeEventListener('keydown', preventKeyboardShortcuts);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     document.removeEventListener('selectstart', preventSelection);
@@ -328,12 +328,12 @@ int main() {
     }
   };
 
-  const preventRightClick = (e) => {
+  {/* const preventRightClick = (e) => {
     if (isSecureMode) {
       e.preventDefault();
       addSecurityViolation('Right-click attempted');
     }
-  };
+  }; commentedbyme */}
 
   const preventKeyboardShortcuts = (e) => {
     if (isSecureMode) {
@@ -683,7 +683,7 @@ int main() {
     }
 
     // Initialize enterprise security suite and force fullscreen
-    await enterFullscreen();
+    // await enterFullscreen(); commentedbyme
     await initializeWebcamProctoring();
     requestLocationAccess();
     
@@ -749,6 +749,7 @@ int main() {
             ...finalResults,
             mcqResults: finalResults.mcqResults || localResults.mcqResults || [],
             codingResults: finalResults.codingResults || localResults.codingResults || [],
+            codingSubmissions: backendResponse?.codingSubmissions || getCodingSubmissionsForResults(),
             timeSpent: (exam.duration * 60) - timeLeft,
             autoSubmitted: autoSubmit,
             securityViolations: securityViolations || [],
@@ -789,16 +790,9 @@ int main() {
         if (question.type === 'mcq' && savedAnswers[index] !== undefined) {
           answers[question.originalIndex] = savedAnswers[index];
         } else if (question.type === 'coding' && codingAnswers[index]?.code) {
-          // Only submit if user actually wrote meaningful code (not just boilerplate)
+          // Submit any saved code (even minimal) to ensure it appears in review
           const userCode = codingAnswers[index];
-          const hasActualCode = userCode.code && 
-            userCode.code.trim().length > 0 && 
-            userCode.code.trim() !== (boilerplate[userCode.language] || boilerplate['python'] || '').trim() &&
-            !userCode.code.includes('// your code here') &&
-            !userCode.code.includes('# your code here') &&
-            userCode.code.trim().length > 20;
-            
-          if (hasActualCode) {
+          if (userCode.code && userCode.code.trim().length > 0) {
             codingSubmissions[question.originalIndex] = {
               code: userCode.code,
               language: userCode.language || 'python'
@@ -930,7 +924,12 @@ int main() {
       const questionIndex = allQuestions.findIndex(q => q === question);
       const userCode = codingAnswers[questionIndex];
       
-      // Check if user actually wrote code (not just boilerplate)
+      // Count as attempted if user saved any code (even minimal)
+      if (userCode && userCode.code && userCode.code.trim().length > 0) {
+        codingAttempted++;
+      }
+      
+      // Check if user actually wrote substantial code for execution
       const hasActualCode = userCode && userCode.code && 
         userCode.code.trim().length > 0 && 
         userCode.code.trim() !== (boilerplate[userCode.language] || boilerplate['python'] || '').trim() &&
@@ -939,7 +938,6 @@ int main() {
         userCode.code.trim().length > 20; // Minimum meaningful code length
         
       if (hasActualCode) {
-        codingAttempted++;
         
         try {
           // Execute code with Judge0 for each test case
@@ -989,10 +987,18 @@ int main() {
             marks: 0  // No marks for runtime errors
           });
         }
+      } else if (userCode && userCode.code && userCode.code.trim().length > 0) {
+        // User saved code but it's not substantial enough to execute
+        codingResults.push({
+          verdict: 'Saved (Not Executed)',
+          output: 'Code saved but not executed due to insufficient content',
+          marks: 0  // No marks for saved but not executed
+        });
       } else {
+        // No code saved at all
         codingResults.push({
           verdict: 'Not Attempted',
-          output: 'No code submitted or only boilerplate code',
+          output: 'No code submitted',
           marks: 0  // No marks for not attempted
         });
       }
@@ -1035,6 +1041,23 @@ int main() {
       mcqResults,
       codingResults
     };
+  };
+
+  // Helper function to format coding submissions for results page
+  const getCodingSubmissionsForResults = () => {
+    const submissions = [];
+    allQuestions.forEach((question, index) => {
+      if (question.type === 'coding' && codingAnswers[index]?.code) {
+        const userCode = codingAnswers[index];
+        if (userCode.code && userCode.code.trim().length > 0) {
+          submissions[question.originalIndex] = {
+            code: userCode.code,
+            language: userCode.language || 'python'
+          };
+        }
+      }
+    });
+    return submissions;
   };
 
   const handleForceSubmit = async () => {
@@ -1153,24 +1176,51 @@ int main() {
 
   const handleSaveAnswer = () => {
     const currentQuestionData = allQuestions[currentQuestion];
-    
-    // Only handle MCQ manual saving - coding is auto-saved
+
+    // 1. Handle MCQ manual saving
     if (currentQuestionData?.type === 'mcq' && selectedAnswers[currentQuestion] !== undefined) {
       setSavedAnswers(prev => ({
         ...prev,
         [currentQuestion]: selectedAnswers[currentQuestion]
       }));
-      setIsAnswerSaved(true);
-      setShowNotification(true);
-      
-      // Hide notification after 3 seconds
-      setTimeout(() => {
-        setShowNotification(false);
-        setIsAnswerSaved(false);
-      }, 3000);
-      
       addSecurityViolation(`MCQ answer saved for question ${currentQuestion + 1}`);
+
+    // 2. Add logic for Coding question manual saving
+    } else if (currentQuestionData?.type === 'coding' && code.trim().length > 0) {
+      // Save the current code and language to the persistent codingAnswers state
+      console.log('💾 Saving coding answer:', {
+        questionIndex: currentQuestion,
+        codeLength: code.length,
+        language: language,
+        code: code.substring(0, 100) + '...' // Show first 100 chars for debugging
+      });
+      
+      setCodingAnswers(prev => ({
+        ...prev,
+        [currentQuestion]: {
+          code: code || '',
+          language: language
+        }
+      }));
+      addSecurityViolation(`Coding answer saved for question ${currentQuestion + 1}`);
+    } else {
+      // If no code/answer is present, just return or show a message
+      setShowNotification(true);
+      setNotificationMessage('Nothing to save. Please enter code/answer.');
+      setTimeout(() => { setShowNotification(false); }, 3000);
+      return;
     }
+    
+    // Common UI feedback for both types
+    setIsAnswerSaved(true);
+    setShowNotification(true);
+    setNotificationMessage('Your response saved successfully!');
+
+    // Hide notification after 3 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+      setIsAnswerSaved(false);
+    }, 3000);
   };
 
   const getInitialCode = () => {
@@ -1457,21 +1507,35 @@ def solution():
       {/* Enterprise Security Header */}
       <div className="test-navbar">
         <div className="navbar-left">
-        </div>
-        
-        <div className="navbar-center">
-          <div className="test-title">Final Exam: {course?.title}</div>
-          <div className="question-counter">
-            Question {currentQuestion + 1} / {allQuestions.length}
-          </div>
-        </div>
-        
-        <div className="navbar-right">
           <div className="timer-display">
             <Clock size={16} />
             <span className={`timer-text ${timeLeft < 600 ? 'timer-warning' : ''}`}>
               {formatTime(timeLeft)}
             </span>
+          </div>
+        </div>
+        
+        <div className="navbar-center">
+          <div className="test-title">Final Exam: {course?.title}</div>
+        </div>
+        
+        <div className="navbar-right">
+          <div className="nav-controls">
+            <button 
+              onClick={prevQuestion} 
+              disabled={currentQuestion === 0}
+              className="nav-control prev"
+            >
+              ‹ Prev
+            </button>
+            <span className="nav-divider">|</span>
+            <button 
+              onClick={nextQuestion}
+              disabled={!allQuestions.length || currentQuestion >= allQuestions.length - 1}
+              className="nav-control next"
+            >
+              Next ›
+            </button>
           </div>
           <div className="hamburger-menu">
             <button 
@@ -1504,7 +1568,6 @@ def solution():
             {exam?.mcqs && exam.mcqs.length > 0 && (
               <div className="question-section">
                 <h4 className="section-title">
-                  <BookOpen size={16} />
                   MCQs ({exam.mcqs.length})
                 </h4>
                 <div className="question-grid">
@@ -1515,10 +1578,10 @@ def solution():
                         setCurrentQuestion(index);
                         setShowSidebar(false);
                       }}
-                      className={`question-btn ${
-                        currentQuestion === index ? 'active' : ''
+                      className={`question-indicator ${
+                        currentQuestion === index ? 'current' : ''
                       } ${
-                        savedAnswers[`mcq_${index}`] !== undefined ? 'answered' : ''
+                        savedAnswers[index] !== undefined ? 'saved' : ''
                       }`}
                     >
                       {index + 1}
@@ -1532,7 +1595,6 @@ def solution():
             {exam?.codeChallenges && exam.codeChallenges.length > 0 && (
               <div className="question-section">
                 <h4 className="section-title">
-                  <Code size={16} />
                   Coding Challenges ({exam.codeChallenges.length})
                 </h4>
                 <div className="question-grid">
@@ -1545,10 +1607,10 @@ def solution():
                           setCurrentQuestion(questionIndex);
                           setShowSidebar(false);
                         }}
-                        className={`question-btn ${
-                          currentQuestion === questionIndex ? 'active' : ''
+                        className={`question-indicator ${
+                          currentQuestion === questionIndex ? 'current' : ''
                         } ${
-                          codingAnswers[`code_${index}`] ? 'answered' : ''
+                          codingAnswers[questionIndex] !== undefined ? 'saved' : ''
                         }`}
                       >
                         {index + 1}
@@ -1561,26 +1623,6 @@ def solution():
           </div>
         </div>
       )}
-
-      {/* Slim Progress Bar */}
-      <div className="test-progress-bar">
-        <div 
-          className="progress-fill"
-          style={{ width: `${allQuestions.length ? ((currentQuestion + 1) / allQuestions.length) * 100 : 0}%` }}
-        ></div>
-      </div>
-
-      {/* Hidden Webcam for Proctoring */}
-      <video 
-        ref={webcamRef} 
-        autoPlay 
-        muted 
-        className="hidden-element"
-      />
-      <canvas 
-        ref={canvasRef} 
-        className="hidden-element"
-      />
 
       {/* Main Content - Dynamic Layout */}
       <div className="test-main-content">
@@ -1685,6 +1727,13 @@ def solution():
                   >
                     {isRunning ? 'Running...' : 'Run'}
                   </button>
+                  <button
+                    onClick={handleSaveAnswer}
+                    className={`save-btn ${isAnswerSaved ? 'saved' : ''}`}
+                    disabled={!code.trim()}
+                  >
+                    {isAnswerSaved ? '✓ Saved' : 'Save Code'}
+                  </button>
                 </div>
               </div>
 
@@ -1702,18 +1751,15 @@ def solution():
                       setOutput("");
                       setVerdict("");
                     }}
-                    value={code}
-                    onChange={(value) => {
-                      setCode(value || '');
-                      // Auto-save code for this specific question
-                      setCodingAnswers(prev => ({
-                        ...prev,
-                        [currentQuestion]: {
-                          code: value || '',
-                          language: language
-                        }
-                      }));
-                      isModifiedRef.current = true;
+                    value={code || ''}
+                    onChange={(val) => {
+                      try {
+                        setCode(val || '');
+                        isModifiedRef.current = true;
+                        setIsAnswerSaved(false);
+                      } catch (error) {
+                        console.error('Error in onChange:', error);
+                      }
                     }}
                     height="100%"
                     showLanguageSelector={false}
@@ -1764,42 +1810,34 @@ def solution():
       </div>
 
       {/* Navigation Buttons at Bottom */}
-      <div className="exam-navigation-bottom">
-        <div className="nav-left">
-          <button 
-            onClick={prevQuestion}
-            disabled={currentQuestion === 0}
-            className="nav-btn prev-btn"
-          >
-            ‹ Previous
-          </button>
-        </div>
-        
-        <div className="nav-right">
-          {currentQuestion < allQuestions.length - 1 ? (
-            <button 
-              onClick={nextQuestion}
-              className="nav-btn next-btn"
+      <div className="test-navigation">
+        <div className="question-indicators">
+          {(allQuestions || []).map((question, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentQuestion(index)}
+              className={`question-indicator ${
+                index === currentQuestion ? 'current' : ''
+              } ${
+                (question.type === 'mcq' && savedAnswers[index] !== undefined) || 
+                (question.type === 'coding' && codingAnswers[index] !== undefined) ? 'saved' : ''
+              }`}
             >
-              Next ›
+              {index + 1}
             </button>
-          ) : (
-            <button 
-              onClick={async () => {
-                console.log('Submit button clicked');
-                try {
-                  await handleSubmitTest(false);
-                } catch (error) {
-                  console.error('Submit error:', error);
-                }
-              }}
+          ))}
+        </div>
+
+        {allQuestions.length > 0 && currentQuestion === allQuestions.length - 1 && (
+            <button
+              onClick={() => handleSubmitTest()}
               className="nav-btn submit-btn"
+              disabled={false} 
             >
+              Submit
               <CheckCircle size={20} />
-              Submit Final Exam
             </button>
           )}
-        </div>
       </div>
 
       {/* Notification Toast */}
@@ -1832,7 +1870,7 @@ def solution():
       )}
 
       {/* Security Warning Modal */}
-      {showWarning && (
+      {/*{showWarning && ( commentedbyme
         <div className="security-warning-overlay">
           <div className="security-warning-dialog">
             <AlertTriangle size={48} className="warning-icon" />
@@ -1850,7 +1888,7 @@ def solution():
             </button>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Fullscreen Warning Modal */}
       {showFullscreenWarning && (

@@ -6,7 +6,7 @@
 
 .leaderboard-container {
   padding: 1.5rem;
-  background: black;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
   color: #ffffff;
   min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -35,7 +35,7 @@
   font-weight: 800;
   margin-bottom: 2.5rem !important;
   /* Updated to a white gradient for a glossy/subtle effect */
-  background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 50%, #e0e0e0 100%);
+  background: white;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -1076,14 +1076,6 @@ int main() {
                     onChange={(val) => {
                       try {
                         setCode(val || '');
-                        // Auto-save code for this specific question
-                        setCodingAnswers(prev => ({
-                          ...prev,
-                          [currentQuestion]: {
-                            code: val || '',
-                            language: language
-                          }
-                        }));
                         isModifiedRef.current = true;
                         setIsAnswerSaved(false);
                       } catch (error) {
@@ -1253,9 +1245,6 @@ int main() {
                 } ${
                   (question.type === 'mcq' && savedAnswers[index] !== undefined) || 
                   (question.type === 'coding' && codingAnswers[index] !== undefined) ? 'saved' : ''
-                } ${
-                  (question.type === 'mcq' && selectedAnswers[index] !== undefined && savedAnswers[index] === undefined) ||
-                  (question.type === 'coding' && code.trim() && codingAnswers[index] === undefined) ? 'unsaved' : ''
                 }`}
               >
                 {index + 1}
@@ -1267,10 +1256,9 @@ int main() {
               <button
                 onClick={handleSubmitTest}
                 className="nav-btn submit-btn"
-                // Consider adding a proper disabled check here (e.g., if any required answers are missing)
                 disabled={false} 
               >
-                Submit Test
+                Submit
                 <CheckCircle size={20} />
               </button>
             )}

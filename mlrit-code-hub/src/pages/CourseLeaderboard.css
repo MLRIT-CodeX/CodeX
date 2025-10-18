@@ -1,8 +1,7 @@
 .course-leaderboard-container {
-  padding: 30px;
+  padding: 0;
   margin: 0 auto;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  min-height: 100vh;
+  background: transparent;
   color: #fff;
 }
 
@@ -40,23 +39,70 @@
   justify-content: space-between;
   align-items: center;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .search-input {
   padding: 14px 24px;
   border: 2px solid #374151;
-  border-radius: 30px;
+  border-radius: 12px !important;
   background: #1f2937;
   color: #fff;
+  align-items: center !important;
   font-size: 16px;
   width: 350px;
   outline: none;
   transition: all 0.3s ease;
 }
 
-.search-input:focus {
-  border-color: #facc15;
-  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.1);
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.filter-select {
+  padding: 12px 16px;
+  border: 2px solid #374151;
+  border-radius: 12px !important;
+  background: #1f2937;
+  color: #fff;
+  font-size: 14px;
+  min-width: 150px;
+  outline: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 40px;
+  position: relative;
+}
+
+.filter-select::after {
+  content: '▼';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: #ffffff;
+  font-size: 12px;
+  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+.filter-select:focus::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.filter-select:hover {
+  border-color: #4b5563;
+}
+
+.filter-select option {
+  background: #1f2937;
+  color: #fff;
+  padding: 8px;
 }
 
 .leaderboard-controls {
@@ -176,12 +222,17 @@
 }
 
 .course-leaderboard-table .th-dept {
-  width: 15%; /* MODIFIED from 10% */
+  width: 12%; /* MODIFIED to accommodate college column */
+  padding: 12px 15px;
+}
+
+.course-leaderboard-table .th-college {
+  width: 12%; /* New college column */
   padding: 12px 15px;
 }
 
 .course-leaderboard-table .th-score {
-  width: 15%; /* MODIFIED from 10% */
+  width: 14%; /* MODIFIED from 15% */
   padding: 15px 18px;
 }
 
@@ -206,7 +257,8 @@
 .rank-row:hover .user-name,
 .rank-row:hover .roll-number,
 .rank-row:hover .overall-score .score-value,
-.rank-row:hover .department-badge {
+.rank-row:hover .department-badge,
+.rank-row:hover .college-badge {
   color: #3b82f6 !important;
 }
 
@@ -300,6 +352,11 @@
   line-height: 1;
 }
 
+.college {
+  padding: 10px 15px;
+  padding-right: 20px !important;
+}
+
 .overall-score {
   padding: 13px 18px;
   padding-left: 20px !important;
@@ -369,4 +426,47 @@
   position: relative !important;
   z-index: 2 !important;
   background: transparent !important;
+}
+
+/* Current User Neon Animation Keyframes */
+@keyframes neonGlow {
+  0% {
+    box-shadow: 
+      0 0 5px #00d4ff,
+      0 0 10px #00d4ff,
+      0 0 15px #00d4ff,
+      0 0 20px #00d4ff,
+      inset 0 0 5px rgba(0, 212, 255, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 10px #00d4ff,
+      0 0 20px #00d4ff,
+      0 0 30px #00d4ff,
+      0 0 40px #00d4ff,
+      inset 0 0 10px rgba(0, 212, 255, 0.2);
+  }
+  100% {
+    box-shadow: 
+      0 0 5px #00d4ff,
+      0 0 10px #00d4ff,
+      0 0 15px #00d4ff,
+      0 0 20px #00d4ff,
+      inset 0 0 5px rgba(0, 212, 255, 0.1);
+  }
+}
+
+@keyframes neonBorder {
+  0% {
+    border-color: #00d4ff;
+    border-width: 2px;
+  }
+  50% {
+    border-color: #00b8e6;
+    border-width: 3px;
+  }
+  100% {
+    border-color: #00d4ff;
+    border-width: 2px;
+  }
 }

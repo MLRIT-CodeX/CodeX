@@ -383,10 +383,11 @@ const KnowledgeAssessmentResults = () => {
                       </div>
                     )}
                     
-                    {results?.codingResults?.[index]?.output && (
-                      <div className="execution-output">
-                        <h4>Output:</h4>
-                        <pre className="output-text">{results.codingResults[index].output}</pre>
+                    {/* Display user's submitted code */}
+                    {results?.codingSubmissions?.[index] && (
+                      <div className="submitted-code">
+                        <h4>Your Submitted Code ({results.codingSubmissions[index].language || 'python'}):</h4>
+                        <pre className="code-text">{results.codingSubmissions[index].code}</pre>
                       </div>
                     )}
                   </div>

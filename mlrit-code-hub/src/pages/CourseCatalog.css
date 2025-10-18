@@ -293,7 +293,7 @@
 .template-main {
   flex: 1;
   padding: 32px;
-  background: black;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);;
 }
 
 /* Header */
@@ -301,18 +301,25 @@
   margin-bottom: 32px;
 }
 
-.page-title {
+.page-hero {
   font-size: 32px;
   font-weight: 700;
   color: white !important;
   margin: 0 0 8px 0;
-  text-shadow: 0 0 10px rgba(255, 161, 22, 0.3);
+  text-shadow: 
+    0 0 8px rgba(255, 255, 255, 0.4),
+    0 0 15px rgba(255, 255, 255, 0.1);
+  background: white;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .page-subtitle {
   font-size: 16px;
   color: var(--text-secondary);
   margin: 0;
+
 }
 
 /* Controls Bar */

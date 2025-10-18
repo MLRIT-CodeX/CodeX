@@ -518,7 +518,6 @@ const CourseCatalog = () => {
           {/* Categories Section */}
           <div className="categories-section">
             <div className="categories-header">
-              <ChevronDown className="dropdown-icon" />
               <h2 className="categories-title">Categories</h2>
             </div>
             <div className="categories-list">
@@ -588,7 +587,7 @@ const CourseCatalog = () => {
         <div className="template-main">
           {/* Header */}
           <div className="main-header">
-            <h1 className="page-title">All Courses</h1>
+            <p className="page-hero">All Courses</p>
             <p className="page-subtitle">Explore our comprehensive course catalog and start your learning journey.</p>
           </div>
 
@@ -603,21 +602,6 @@ const CourseCatalog = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </div>
-
-            <div className="view-controls">
-              <button
-                className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid className="view-icon" />
-              </button>
-              <button
-                className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
-              >
-                <List className="view-icon" />
-              </button>
             </div>
           </div>
 

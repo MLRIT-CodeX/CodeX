@@ -133,7 +133,7 @@ const Leaderboard = () => {
         <div className="search-section">
           <input
             type="text"
-            placeholder="Search by user..."
+            placeholder="Search by user or roll..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"

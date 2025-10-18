@@ -55,7 +55,7 @@ body {
 /* Main Container */
 .online-compiler {
   min-height: 100vh;
-  background: black;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
   display: flex;
   flex-direction: column;
   padding: 20px 0 0 0;
@@ -69,7 +69,7 @@ body {
   height: calc(100vh - var(--navbar-height));
   position: relative;
   gap: 0.5rem;
-  background: black;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
   padding: 1rem 0.4rem 0 0.4rem !important;
   border: none !important;
   border-radius: 4px;
@@ -78,7 +78,7 @@ body {
 /* Left Panel */
 .left-panel {
   flex: 1;
-  background: black;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
@@ -814,7 +814,7 @@ body {
 
 /* Right Panel */
 .right-panel {
-  background: black;
+  background: linear-gradient(135deg, #0f0f23, #1a1a2e 50%, #16213e);
   border: var(--neon-text-glow) !important;
   border-radius: var(--radius-lg);
   display: flex;
