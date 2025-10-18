@@ -26,6 +26,7 @@ html {
   min-height: 100vh;
   background: linear-gradient(135deg, var(--bg-dark), var(--bg-mid) 50%, var(--bg-light));
   color: white;
+  margin-top: 60px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
@@ -44,17 +45,17 @@ html {
   z-index: 100;
   background-color: rgba(15, 15, 35, 0.95);
   backdrop-filter: blur(8px);
-  height: 80px; /* Define explicit height for the header */
+  height: 60px !important;
 }
 
 .nav-content {
   max-width: 1200px;
+  height: 60px !important;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 80px; /* Match header height for proper centering */
 }
 
 .logo-section {
@@ -154,6 +155,7 @@ html {
   gap: 0.5rem;
   position: relative;
   overflow: hidden;
+  height: 40px;
 }
 
 .btn-large {
@@ -164,7 +166,7 @@ html {
 .btn-primary {
   background: transparent;
   color: var(--mlrit-purple-light);
-  border: 1px solid var(--mlrit-purple);
+  border: 1px solid var(--mlrit-purple) !important;
 }
 
 .btn-primary:hover {
@@ -178,7 +180,7 @@ html {
 .btn-outline {
   background: transparent;
   color: var(--mlrit-purple-light);
-  border: 1px solid var(--mlrit-purple);
+  border: 1px solid var(--mlrit-purple) !important;
   margin-left: -1rem;
 }
 
@@ -200,7 +202,7 @@ html {
   position: relative;
   padding: 12rem 0 4rem;
   overflow: hidden;
-  margin-top: 80px; /* Add margin to account for fixed header */
+  margin-top: 60px !important; /* Add margin to account for fixed header */
 }
 
 .hero-bg {
@@ -951,7 +953,7 @@ html {
 
 @media (max-width: 480px) {
   .container {
-    padding: 0 16px;
+    padding: 0 !important;
   }
   
   .hero-section {
