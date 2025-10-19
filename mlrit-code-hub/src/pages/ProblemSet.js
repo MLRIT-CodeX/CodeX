@@ -142,7 +142,6 @@ const ProblemSet = () => {
                  <span className="problem-score">Score</span>
                  <span className="problem-success">Success Rate</span>
                  <span className="problem-difficulty">Difficulty</span>
-                 <span className="solve-btn">Action</span>
                </div>
                
                {currentProblems.length > 0 ? (
@@ -170,20 +169,6 @@ const ProblemSet = () => {
                      <span className={`problem-difficulty ${getDifficulty(problem.difficulty).toLowerCase()}`}>
                        {getDifficulty(problem.difficulty)}
                      </span>
-                     <Link 
-                       className="solve-btn" 
-                       to={`/solve/${problem._id}`}
-                       onClick={(e) => {
-                         e.stopPropagation();
-                       }}
-                       onKeyDown={(e) => {
-                         if (e.key === 'Enter' || e.key === ' ') {
-                           e.stopPropagation();
-                         }
-                       }}
-                     >
-                       Solve →
-                     </Link>
                    </div>
                  ))
                ) : (
@@ -194,7 +179,7 @@ const ProblemSet = () => {
                )}
              </div>
 
-      {/* Pagination */}
+      {/* Pagination 
       <div className="pagination">
         <span 
           className={`pagination-chevron ${currentPage === 1 ? 'disabled' : ''}`}
@@ -229,7 +214,7 @@ const ProblemSet = () => {
         >
           &gt;
         </span>
-      </div>
+      </div>*/}
     </div>
   );
 };
