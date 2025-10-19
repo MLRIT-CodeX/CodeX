@@ -1350,7 +1350,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 12px 36px;
   border: none;
   border-radius: 8px;
   font-size: 16px;
@@ -1387,8 +1387,37 @@
 .question-indicators {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+  margin: 0 100px !important;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1e293b;
+}
+
+.question-indicators::-webkit-scrollbar {
+  height: 6px;
+}
+
+.question-indicators::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 3px;
+}
+
+.question-indicators::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 3px;
+}
+
+.question-indicators::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.question-indicator {
+  flex-shrink: 0;
 }
 
 .indicator {
@@ -1656,4 +1685,44 @@
 
 .test-main-content{
   background: #1a1a1a;
+  padding-bottom: 100px; /* Add space for fixed navigation */
+}
+
+/* Test Navigation Bottom Bar */
+.test-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1a1f2e;
+  border-top: 1px solid #2d3748;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  z-index: 100;
+  min-height: 80px;
+}
+
+.test-navigation .question-indicators {
+  flex: 1;
+  max-width: calc(100% - 160px);
+  margin: 0 80px;
+}
+
+/* Responsive adjustments for test navigation */
+@media (max-width: 768px) {
+  .test-navigation {
+    flex-direction: column;
+    padding: 12px 16px;
+    gap: 12px;
+    min-height: auto;
+  }
+  
+  .test-navigation .question-indicators {
+    max-width: 100%;
+    margin: 0;
+    order: -1;
+  }
 }
