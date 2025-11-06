@@ -449,7 +449,7 @@ const ModernCourseDetail = () => {
                 </div>
                 <div className="stat">
                   <BookOpen size={18} />
-                  <span>{totalTopics} modules</span>
+                  <span>{course.modules?.length || 0} modules</span>
                 </div>
                 <div className="stat">
                   <Star size={18} fill="#fbbf24" color="#fbbf24" />
@@ -586,111 +586,142 @@ const ModernCourseDetail = () => {
             <div className="curriculum-header">
               <div className="header-content">
                 <p className="section-title">Course Curriculum</p>
-                <p className="curriculum-subtitle">{totalTopics} modules • {course.duration || '2-3 hours'} total</p>
+                <p className="curriculum-subtitle">{course.modules?.length || 0} modules • {course.duration || '2-3 hours'} total</p>
               </div>
             </div>
             
             <div className="modules-grid">
-              {(course.topics || []).map((topic, topicIndex) => {
-                const tProg = ((progress?.topicsProgress || [])).find(tp => (tp.topicId?.toString?.() || tp.topicId) === (topic._id?.toString?.() || topic._id));
-                
-                // Enhanced topic completion calculation including knowledge assessments
-                const hasModuleTest = topic.moduleTest;
-                const moduleTestCompleted = tProg?.moduleTestCompleted || false;
-                const lessonsInTopic = topic.lessons?.length || 0;
-                const completedLessonsInTopic = tProg?.lessons?.filter(l => l.completed).length || 0;
-                
-                // Topic is fully completed if lessons + module test (if exists) are done
-                const topicFullyCompleted = (
-                  (lessonsInTopic === 0 || completedLessonsInTopic === lessonsInTopic) &&
-                  (!hasModuleTest || moduleTestCompleted)
-                );
-                const isTopicCompleted = tProg?.completed || topicFullyCompleted;
-                
-                // Calculate detailed completion percentage including knowledge assessments
-                let topicCompletionPercentage = 0;
-                if (lessonsInTopic > 0 || hasModuleTest) {
-                  const lessonWeight = hasModuleTest ? 0.7 : 1.0;
-                  const testWeight = hasModuleTest ? 0.3 : 0;
-                  
-                  const lessonPercent = lessonsInTopic > 0 ? (completedLessonsInTopic / lessonsInTopic) * 100 : 0;
-                  const testPercent = moduleTestCompleted ? 100 : 0;
-                  
-                  topicCompletionPercentage = Math.round((lessonPercent * lessonWeight) + (testPercent * testWeight));
-                }
+              {(course.modules || []).map((module, moduleIndex) => {
                 const isLocked = !isEnrolled;
                 
                 return (
-                  <div key={topicIndex} className={`modern-module ${isTopicCompleted ? 'completed' : ''} ${isLocked ? 'locked' : ''}`}>
+                  <div key={moduleIndex} className={`modern-module ${isLocked ? 'locked' : ''}`}>
                     <div className="module-card">
                       <div className="module-header">
                         <div className="module-number">
                           {isLocked ? (
                             <Lock size={18} />
-                          ) : isTopicCompleted ? (
-                            <CheckCircle size={18} color="#10b981" />
                           ) : (
-                            <span className="number">{topicIndex + 1}</span>
+                            <span className="number">{moduleIndex + 1}</span>
                           )}
                         </div>
                         
                         <div className="module-content">
                           <div className="module-title-row">
-                            <h4 className="module-title">{topic.title}</h4>
+                            <h4 className="module-title">{module.title}</h4>
                             {!isLocked && (
                               <button 
-                                onClick={() => startTopic(topicIndex)} 
+                                onClick={() => navigate(`/courses/${courseId}/module/${module._id}/theory`)} 
                                 className="review-btn"
                               >
-                                {isTopicCompleted ? 'Review' : topicCompletionPercentage > 0 ? 'Continue' : 'Start'}
+                                Start
                                 <ChevronRight size={14} />
                               </button>
                             )}
                           </div>
-                          <p className="module-description">{topic.description}</p>
+                          <p className="module-description">{module.description}</p>
                           
-                          {/*topicCompletionPercentage > 0 && (
-                            <div className="completion-badge">
-                              {topicCompletionPercentage === 100 ? '100% Solved' : `${topicCompletionPercentage}% Complete`}
-                            </div>
-                          )*/}
-                          
-                          {/* Lesson and Test Items */}
+                          {/* Module Content Types */}
                           <div className="module-items">
-                            {(topic.lessons || []).map((lesson, lIndex) => {
-                              const isLessonCompleted = !!(tProg?.lessons || []).find(l => (l.lessonId?.toString?.() || l.lessonId) === (lesson._id?.toString?.() || lesson._id))?.completed;
-                              return (
-                                <div 
-                                  key={`lesson-${lIndex}`} 
-                                  className={`module-item ${isLessonCompleted ? 'completed' : ''} ${isLocked ? 'locked' : ''}`}
-                                  onClick={() => !isLocked && startLesson(topic, lesson)}
-                                >
-                                  <div className="item-status">
-                                    {isLocked ? (
-                                      <Lock size={16} />
-                                    ) : (
-                                      <div className={`completion-circle ${isLessonCompleted ? 'completed' : ''}`}></div>
-                                    )}
-                                  </div>
-                                  <div className="item-content">
-                                    <span className="item-title">{lesson.title}</span>
-                                    <span className="item-type">Lesson</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            {/* Theory */}
+                            <div 
+                              className={`module-item ${isLocked ? 'locked' : ''}`}
+                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/theory`)}
+                            >
+                              <div className="item-status">
+                                {isLocked ? (
+                                  <Lock size={16} />
+                                ) : (
+                                  <div className="completion-circle"></div>
+                                )}
+                              </div>
+                              <div className="item-content">
+                                <span className="item-title">Theory</span>
+                                <span className="item-type">Content, PDF, PPT, DOC, WPS</span>
+                              </div>
+                            </div>
                             
-                            {/* Module Test */}
-                            {topic.moduleTest && (topic.moduleTest.mcqs?.length > 0 || topic.moduleTest.codeChallenges?.length > 0) && (
+                            {/* Snippets */}
+                            <div 
+                              className={`module-item ${isLocked ? 'locked' : ''}`}
+                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/snippets`)}
+                            >
+                              <div className="item-status">
+                                {isLocked ? (
+                                  <Lock size={16} />
+                                ) : (
+                                  <div className="completion-circle"></div>
+                                )}
+                              </div>
+                              <div className="item-content">
+                                <span className="item-title">Snippets</span>
+                                <span className="item-type">Syntax Examples</span>
+                              </div>
+                            </div>
+                            
+                            {/* Lecture */}
+                            <div 
+                              className={`module-item ${isLocked ? 'locked' : ''}`}
+                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/lecture`)}
+                            >
+                              <div className="item-status">
+                                {isLocked ? (
+                                  <Lock size={16} />
+                                ) : (
+                                  <div className="completion-circle"></div>
+                                )}
+                              </div>
+                              <div className="item-content">
+                                <span className="item-title">Lecture Content</span>
+                                <span className="item-type">Interactive Learning</span>
+                              </div>
+                            </div>
+                            
+                            {/* MCQ */}
+                            <div 
+                              className={`module-item ${isLocked ? 'locked' : ''}`}
+                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/mcq`)}
+                            >
+                              <div className="item-status">
+                                {isLocked ? (
+                                  <Lock size={16} />
+                                ) : (
+                                  <div className="completion-circle"></div>
+                                )}
+                              </div>
+                              <div className="item-content">
+                                <span className="item-title">MCQ</span>
+                                <span className="item-type">Practice Questions</span>
+                              </div>
+                            </div>
+                            
+                            {/* Code Challenges */}
+                            <div 
+                              className={`module-item ${isLocked ? 'locked' : ''}`}
+                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/challenges`)}
+                            >
+                              <div className="item-status">
+                                {isLocked ? (
+                                  <Lock size={16} />
+                                ) : (
+                                  <div className="completion-circle"></div>
+                                )}
+                              </div>
+                              <div className="item-content">
+                                <span className="item-title">Code Challenges</span>
+                                <span className="item-type">Coding Practice</span>
+                              </div>
+                            </div>
+                            
+                            {/* Knowledge Assessment */}
+                            {module.moduleTest && (module.moduleTest.mcqs?.length > 0 || module.moduleTest.codeChallenges?.length > 0) && (
                               <div 
-                                className={`module-item test-item ${moduleTestCompleted ? 'completed' : ''} ${isLocked ? 'locked' : ''}`}
-                                onClick={() => !isLocked && navigate(`/courses/${courseId}/topic/${topic._id}/test`)}
+                                className={`module-item test-item ${isLocked ? 'locked' : ''}`}
+                                onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/test`)}
                               >
                                 <div className="item-status">
                                   {isLocked ? (
                                     <Lock size={16} />
-                                  ) : moduleTestCompleted ? (
-                                    <CheckCircle size={16} color="#22c55e" />
                                   ) : (
                                     <div className="item-icon test">
                                       <Award size={16} />
@@ -698,7 +729,7 @@ const ModernCourseDetail = () => {
                                   )}
                                 </div>
                                 <div className="item-content">
-                                  <span className="item-title">Knowledge Assessment: {topic.title}</span>
+                                  <span className="item-title">Knowledge Assessment: {module.title}</span>
                                   <span className="item-type">Assessment</span>
                                 </div>
                               </div>

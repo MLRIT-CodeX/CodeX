@@ -28,6 +28,7 @@ async function checkCourses() {
       console.log(`   - Active: ${course.isActive}`);
       console.log(`   - Difficulty: ${course.difficulty}`);
       console.log(`   - Topics: ${course.topics?.length || 0}`);
+      console.log(`   - Modules: ${course.modules?.length || 0}`);
       console.log(`   - Has finalExam: ${!!course.finalExam}`);
       
       if (course.finalExam) {
@@ -35,8 +36,23 @@ async function checkCourses() {
         console.log(`   - Final Exam Coding: ${course.finalExam.codeChallenges?.length || 0}`);
       }
       
-      // Check topics and lessons
+      // Check modules (new structure)
+      if (course.modules && course.modules.length > 0) {
+        console.log(`   📦 NEW MODULE STRUCTURE:`);
+        course.modules.forEach((module, moduleIndex) => {
+          console.log(`      Module ${moduleIndex + 1}: ${module.title}`);
+          console.log(`      - Has Theory: ${!!module.theory}`);
+          console.log(`      - Has Snippets: ${!!module.snippets}`);
+          console.log(`      - Has Lecture: ${!!module.lecture}`);
+          console.log(`      - MCQs: ${module.mcqs?.length || 0}`);
+          console.log(`      - Code Challenges: ${module.codeChallenges?.length || 0}`);
+          console.log(`      - Module Test: ${!!module.moduleTest}`);
+        });
+      }
+      
+      // Check topics and lessons (old structure)
       if (course.topics && course.topics.length > 0) {
+        console.log(`   📚 OLD TOPICS STRUCTURE:`);
         let totalLessons = 0;
         let totalMCQs = 0;
         let totalCoding = 0;

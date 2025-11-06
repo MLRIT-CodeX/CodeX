@@ -50,6 +50,13 @@ import ModuleTestPage from "./pages/ModuleTestPage";
 import FinalExamPage from "./pages/FinalExamPage";
 import FinalExamResults from "./pages/FinalExamResults";
 
+// Module Pages
+import Theory from "./pages/module/Theory";
+import Snippets from "./pages/module/Snippets";
+import Lecture from "./pages/module/Lecture";
+import MCQ from "./pages/module/MCQ";
+import Challenges from "./pages/module/Challenges";
+
 function App() {
   const [user, setUser] = useState(null);
   const token = localStorage.getItem("token");
@@ -167,6 +174,14 @@ function App() {
           <Route path="/courses/:courseId/module/:moduleIndex/topic/:topicIndex" element={<ProtectedRoute allowedRole={["student", "admin"]}><TopicView /></ProtectedRoute>} />
           <Route path="/courses" element={<ProtectedRoute allowedRole={["student", "admin"]}><CourseCatalog /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute allowedRole={["student", "admin"]}><Dashboard /></ProtectedRoute>} />
+
+          {/* Module Routes */}
+          <Route path="/courses/:courseId/module/:moduleId/theory" element={<ProtectedRoute allowedRole={["student", "admin"]}><Theory /></ProtectedRoute>} />
+          <Route path="/courses/:courseId/module/:moduleId/snippets" element={<ProtectedRoute allowedRole={["student", "admin"]}><Snippets /></ProtectedRoute>} />
+          <Route path="/courses/:courseId/module/:moduleId/lecture" element={<ProtectedRoute allowedRole={["student", "admin"]}><Lecture /></ProtectedRoute>} />
+          <Route path="/courses/:courseId/module/:moduleId/mcq" element={<ProtectedRoute allowedRole={["student", "admin"]}><MCQ /></ProtectedRoute>} />
+          <Route path="/courses/:courseId/module/:moduleId/challenges" element={<ProtectedRoute allowedRole={["student", "admin"]}><Challenges /></ProtectedRoute>} />
+          <Route path="/courses/:courseId/module/:moduleId/test" element={<ProtectedRoute allowedRole={["student", "admin"]}><ModuleTestPage /></ProtectedRoute>} />
 
           {/* 404 Fallback */}
           <Route path="*" element={<Navigate to="/" />} />

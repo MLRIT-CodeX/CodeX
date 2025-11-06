@@ -1,0 +1,172 @@
+/*******************************************
+ 📘 CONTENT HEADER - Modern Navigation Bar
+--------------------------------------------
+By: UI/UX Designer (10+ yrs experience)
+Goal: Unified gradient design system across
+all course module pages (dark & elegant).
+*******************************************/
+
+/* ================================
+   Container Layout
+=============================== */
+.content-header {
+  background: linear-gradient(180deg, #111827 0%, #0d1117 100%);
+  padding: 1rem 0 1.5rem;
+  border-bottom: 1px solid #1e2533;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+}
+
+.content-header-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ================================
+   Header Main Section
+=============================== */
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Title Section */
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.header-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+.header-subtitle {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+/* ================================
+   Navigation Buttons
+=============================== */
+.header-navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.3px;
+}
+
+/* Previous Button */
+.nav-button.prev {
+  background: #1e2533;
+  color: #cbd5e1;
+  border: 1px solid #2a3140;
+}
+
+.nav-button.prev:hover:not(.disabled) {
+  background: #2b3244;
+  color: #ffffff;
+  transform: translateX(-3px);
+}
+
+/* Next Button */
+.nav-button.next {
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  color: white;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.nav-button.next:hover:not(.disabled) {
+  transform: translateX(3px);
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.6);
+}
+
+/* Disabled Buttons */
+.nav-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ================================
+   Breadcrumb
+=============================== */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.breadcrumb-item {
+  color: #a5b4fc;
+  font-weight: 500;
+  text-transform: capitalize;
+  transition: color 0.3s ease;
+}
+
+.breadcrumb-item.active {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.breadcrumb-separator {
+  color: #475569;
+  font-weight: 700;
+}
+
+/* ================================
+   Subtle Divider Shadow
+=============================== */
+.content-header::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #2b3244, transparent);
+  margin-top: 1rem;
+  opacity: 0.3;
+}
+
+/* ================================
+   Responsive Adjustments
+=============================== */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0 1rem;
+  }
+
+  .breadcrumb {
+    padding: 0 1rem;
+  }
+
+  .header-title {
+    font-size: 1.4rem;
+  }
+}

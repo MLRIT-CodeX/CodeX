@@ -1,0 +1,279 @@
+/*******************************************
+ 🌐 MLRIT Code Hub - Sidebar Redesign
+--------------------------------------------
+Dark Glass UI • Blue Accent • Clean Hierarchy
+*******************************************/
+
+/* -------------------------------
+   Sidebar Base
+--------------------------------*/
+.course-sidebar {
+  width: 270px;
+  height: 100vh;
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  color: #e2e8f0;
+  transition: width 0.3s ease, background 0.3s ease;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.course-sidebar.collapsed {
+  width: 80px;
+}
+
+/* -------------------------------
+   Header
+--------------------------------*/
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.7);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.home-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #cbd5e1;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color 0.25s ease;
+}
+
+.home-button:hover {
+  color: #60a5fa;
+}
+
+.collapse-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.collapse-button:hover {
+  color: #60a5fa;
+}
+
+/* -------------------------------
+   Course Title
+--------------------------------*/
+.course-title {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.course-title h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f9fafb;
+  text-transform: capitalize;
+}
+
+/* -------------------------------
+   Modules
+--------------------------------*/
+.modules-navigation {
+  flex: 1;
+  padding: 1rem 0.75rem;
+}
+
+.module-section {
+  margin-bottom: 0.8rem;
+}
+
+.module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  background: rgba(17, 24, 39, 0.6);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.module-header:hover {
+  background: rgba(31, 41, 55, 0.8);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.module-header.current {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color: #fff;
+  border: none;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.module-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.module-number {
+  background: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.module-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.expand-icon {
+  color: #94a3b8;
+  transition: transform 0.3s ease;
+}
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* -------------------------------
+   Topics (Theory, MCQ, etc.)
+--------------------------------*/
+.module-topics {
+  margin-top: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-left: 1.5rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.topic-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(17, 24, 39, 0.4);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.topic-link:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+.topic-link.active {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+/* -------------------------------
+   Footer
+--------------------------------*/
+.sidebar-footer {
+  background: rgba(30, 41, 59, 0.7);
+  padding: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  color: #a5b4fc;
+  font-size: 0.9rem;
+}
+
+/* -------------------------------
+   Mobile Controls
+--------------------------------*/
+.mobile-sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+  background: rgba(31, 41, 55, 0.85);
+  color: #e2e8f0;
+  border: none;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.mobile-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 39;
+}
+
+@media (max-width: 900px) {
+  .course-sidebar {
+    position: fixed;
+    left: -270px;
+    top: 0;
+    transition: left 0.3s ease;
+  }
+
+  .course-sidebar.mobile-open {
+    left: 0;
+  }
+
+  .mobile-sidebar-toggle {
+    display: block;
+  }
+
+  .mobile-sidebar-overlay {
+    display: block;
+  }
+}
+
+/* -------------------------------
+   Animations + Scrollbar
+--------------------------------*/
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.course-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.course-sidebar::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.course-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* -------------------------------
+   Collapsed View
+--------------------------------*/
+.course-sidebar.collapsed .module-title,
+.course-sidebar.collapsed .module-topics,
+.course-sidebar.collapsed .course-title,
+.course-sidebar.collapsed .sidebar-footer {
+  display: none;
+}

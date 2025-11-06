@@ -1,0 +1,351 @@
+/*******************************************
+ 🌙 Modern Lecture Page Styling
+--------------------------------------------
+Author: UI/UX Designer (10+ yrs exp)
+Goal: Beautiful, readable, and immersive 
+      learning experience
+*******************************************/
+
+/* ================================
+   Base Layout
+=============================== */
+.lecture-layout {
+  display: flex;
+  background: #0d1117; /* same as challenges page for consistency */
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+}
+
+.lecture-main {
+  flex: 1;
+  padding: 2rem 2.5rem;
+  overflow-y: auto;
+}
+
+/* ================================
+   Loading / Error States
+=============================== */
+.lecture-loading,
+.lecture-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+  color: #9ca3af;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid #3b82f6;
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.back-button {
+  margin-top: 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.back-button:hover {
+  background: #2563eb;
+}
+
+/* ================================
+   Progress Tracker
+=============================== */
+.lecture-progress {
+  background: #1a1f29;
+  border: 1px solid #2a3140;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.progress-header h3 {
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.progress-percentage {
+  color: #a5b4fc;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #202736;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  border-radius: 6px;
+  transition: width 0.6s ease;
+}
+
+.progress-text {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* ================================
+   Lecture Sections
+=============================== */
+.lecture-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.lecture-section {
+  background: #1a1f29;
+  border: 1px solid #2a3140;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.lecture-section.completed {
+  border: 1px solid #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+}
+
+/* ================================
+   Section Header
+=============================== */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  background: #212633;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.section-header:hover {
+  background: #262c3b;
+}
+
+.section-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-icon {
+  background: #2b3241;
+  padding: 10px;
+  border-radius: 8px;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-title-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.section-number {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.section-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.completed-icon {
+  color: #22c55e;
+}
+
+.expand-icon {
+  color: #94a3b8;
+  transition: transform 0.3s ease;
+}
+
+/* ================================
+   Section Body
+=============================== */
+.section-content {
+  background: #171b24;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #2a3140;
+}
+
+.content-body {
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.content-body pre {
+  background: #0e1117;
+  padding: 0.75rem;
+  border-radius: 8px;
+  color: #a5b4fc;
+  font-family: 'Fira Code', monospace;
+  overflow-x: auto;
+}
+
+.content-body code {
+  color: #a5b4fc;
+}
+
+.content-body ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.complete-button {
+  margin-top: 1rem;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.25s ease;
+}
+
+.complete-button:hover {
+  background: #16a34a;
+}
+
+/* ================================
+   Code Examples Section
+=============================== */
+.code-examples-section {
+  margin-top: 2rem;
+  background: #1a1f29;
+  border: 1px solid #2a3140;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.examples-title {
+  font-size: 1.3rem;
+  color: #e0e7ff;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+}
+
+.code-examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.code-example-card {
+  background: #171b24;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  padding: 1.25rem;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.code-example-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-3px);
+}
+
+.example-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.example-title {
+  font-size: 1rem;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.language-badge {
+  background: #2b3241;
+  color: #93c5fd;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.example-code {
+  background: #0e1117;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  color: #93c5fd;
+  font-size: 0.9rem;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.example-explanation {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+/* ================================
+   Scrollbar Styling (Nice Touch)
+=============================== */
+.lecture-main::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lecture-main::-webkit-scrollbar-thumb {
+  background-color: #3b82f6;
+  border-radius: 8px;
+}
+
+.lecture-main::-webkit-scrollbar-track {
+  background: #111827;
+}
