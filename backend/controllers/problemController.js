@@ -156,33 +156,92 @@ const getProblemById = async (req, res) => {
 // Get real-time problem stats
 const getProblemStats = async (req, res) => {
   try {
-    const stats = await Submission.aggregate([
-      {
-        $group: {
-          _id: "$problem",
-          usersTried: { $addToSet: "$user" },
-          successCount: {
-            $sum: { $cond: ["$isSuccess", 1, 0] },
-          },
-          totalSubmissions: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          problemId: "$_id",
-          usersTried: { $size: "$usersTried" },
-          successRate: {
-            $cond: [
-              { $eq: ["$totalSubmissions", 0] },
-              0,
-              { $multiply: [{ $divide: ["$successCount", "$totalSubmissions"] }, 100] },
-            ],
-          },
-        },
-      },
-    ]);
+    const userId = req.user.id;
 
-    res.status(200).json(stats);
+    // Get all problems
+    const problems = await Problem.find({}).lean();
+    
+    // Categorize problems by type and difficulty
+    const practiceProblems = problems.filter(p => p.type === 'practice' || !p.type);
+    const courseProblems = problems.filter(p => p.type === 'course');
+
+    // Get practice problems by difficulty
+    const easyProblems = practiceProblems.filter(p => p.difficulty.toLowerCase() === 'easy');
+    const mediumProblems = practiceProblems.filter(p => p.difficulty.toLowerCase() === 'medium');
+    const hardProblems = practiceProblems.filter(p => p.difficulty.toLowerCase() === 'hard');
+
+    // Get course problems by difficulty
+    const easyCourseProblems = courseProblems.filter(p => p.difficulty.toLowerCase() === 'easy');
+    const mediumCourseProblems = courseProblems.filter(p => p.difficulty.toLowerCase() === 'medium');
+    const hardCourseProblems = courseProblems.filter(p => p.difficulty.toLowerCase() === 'hard');
+
+    // Get user's successful submissions
+    const successfulSubmissions = await Submission.find({
+      user: userId,
+      isSuccess: true
+    }).populate('problem').lean();
+
+    // Calculate solved problems by type and difficulty
+    const solvedPractice = {
+      easy: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type !== 'course' && s.problem.difficulty.toLowerCase() === 'easy').map(s => s.problem._id.toString())).size,
+      medium: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type !== 'course' && s.problem.difficulty.toLowerCase() === 'medium').map(s => s.problem._id.toString())).size,
+      hard: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type !== 'course' && s.problem.difficulty.toLowerCase() === 'hard').map(s => s.problem._id.toString())).size,
+      total: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type !== 'course').map(s => s.problem._id.toString())).size
+    };
+
+    const solvedCourse = {
+      easy: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type === 'course' && s.problem.difficulty.toLowerCase() === 'easy').map(s => s.problem._id.toString())).size,
+      medium: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type === 'course' && s.problem.difficulty.toLowerCase() === 'medium').map(s => s.problem._id.toString())).size,
+      hard: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type === 'course' && s.problem.difficulty.toLowerCase() === 'hard').map(s => s.problem._id.toString())).size,
+      total: new Set(successfulSubmissions.filter(s => s.problem && s.problem.type === 'course').map(s => s.problem._id.toString())).size
+    };
+
+    // Calculate max possible scores and organize problems by difficulty
+    const maxPracticeScore = practiceProblems.reduce((sum, p) => sum + (p.score || 0), 0);
+    const maxCourseScore = courseProblems.reduce((sum, p) => sum + (p.score || 0), 0);
+
+    // Return organized stats
+    res.json({
+      practiceProblems: {
+        easy: easyProblems,
+        medium: mediumProblems,
+        hard: hardProblems,
+        total: practiceProblems.length
+      },
+      courseProblems: {
+        easy: easyCourseProblems,
+        medium: mediumCourseProblems,
+        hard: hardCourseProblems,
+        total: courseProblems.length
+      },
+      solvedPractice,
+      solvedCourse,
+      scores: {
+        maxPracticeScore,
+        maxCourseScore,
+        totalMaxScore: maxPracticeScore + maxCourseScore
+      }
+    });
+
+    res.status(200).json({
+      // Practice problem stats
+      easy: { solved: solvedPractice.easy, total: easyProblems.length, color: 'color-easy' },
+      medium: { solved: solvedPractice.medium, total: mediumProblems.length, color: 'color-medium' },
+      hard: { solved: solvedPractice.hard, total: hardProblems.length, color: 'color-hard' },
+      totalSolved: solvedPractice.easy + solvedPractice.medium + solvedPractice.hard,
+      totalAvailable: practiceProblems.length,
+      maxPossibleScore: maxPracticeScore,
+
+      // Course problem stats
+      courses: {
+        easy: { solved: solvedCourse.easy, total: easyCourseProblems.length, color: 'color-easy' },
+        medium: { solved: solvedCourse.medium, total: mediumCourseProblems.length, color: 'color-medium' },
+        hard: { solved: solvedCourse.hard, total: hardCourseProblems.length, color: 'color-hard' },
+        totalSolved: solvedCourse.easy + solvedCourse.medium + solvedCourse.hard,
+        totalAvailable: courseProblems.length,
+        maxPossibleScore: maxCourseScore
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: "Error fetching stats", error: error.message });
   }

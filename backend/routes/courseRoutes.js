@@ -28,6 +28,30 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 /* ================================
+   ✅ Get user's enrolled courses
+   ================================ */
+router.get("/user/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const courses = await Course.find({ 'enrolledStudents.userId': userId })
+      .select('title description difficulty enrolledCount');
+    
+    res.json({
+      courses,
+      totalEnrolled: courses.length,
+      stats: {
+        easy: courses.filter(c => c.difficulty.toLowerCase() === 'easy').length,
+        medium: courses.filter(c => c.difficulty.toLowerCase() === 'medium').length,
+        hard: courses.filter(c => c.difficulty.toLowerCase() === 'hard').length
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error fetching user's courses:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* ================================
    ✅ Get course by ID
    ================================ */
 router.get("/:id", authenticateToken, async (req, res) => {

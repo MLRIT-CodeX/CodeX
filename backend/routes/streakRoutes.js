@@ -6,9 +6,23 @@ const UserStreak = require("../models/UserStreak");
 // GET /api/streak/user - Get user's current streak
 router.get("/user", authenticateToken, async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated"
+      });
+    }
+
     const userId = req.user.id;
     const streakData = await UserStreak.getUserStreak(userId);
     
+    if (!streakData) {
+      return res.status(404).json({
+        success: false,
+        message: "Streak data not found"
+      });
+    }
+
     res.json({
       success: true,
       data: streakData

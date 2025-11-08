@@ -42,11 +42,22 @@ const ProblemSet = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const map = {};
-        res.data.forEach((stat) => {
-          map[stat.problemId] = stat;
-        });
-        setStatsMap(map);
+        const practiceStats = {
+          easy: {
+            solved: res.data.solvedPractice?.easy || 0,
+            total: res.data.practiceProblems?.easy?.length || 0
+          },
+          medium: {
+            solved: res.data.solvedPractice?.medium || 0,
+            total: res.data.practiceProblems?.medium?.length || 0
+          },
+          hard: {
+            solved: res.data.solvedPractice?.hard || 0,
+            total: res.data.practiceProblems?.hard?.length || 0
+          }
+        };
+        
+        setStatsMap(practiceStats);
       } catch (err) {
         console.error("Failed to load stats", err);
       }
