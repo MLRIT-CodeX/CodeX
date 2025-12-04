@@ -12,8 +12,8 @@ import {
   Send,
   RotateCcw,
 } from 'lucide-react';
-import CourseSidebar from '../../components/CourseSidebar';
-import ContentHeader from '../../components/ContentHeader';
+import ModuleNavigationHeader from '../../components/ModuleNavigationHeader';
+import ModuleNavigationFooter from '../../components/ModuleNavigationFooter';
 import { useModuleData } from '../../hooks/useModuleData';
 import './Challenges.css';
 
@@ -28,6 +28,9 @@ const Challenges = () => {
   const [showHints, setShowHints] = useState({});
   const [testResults, setTestResults] = useState({});
   const [submissionStatus, setSubmissionStatus] = useState({});
+  const [currentChallenge, setCurrentChallenge] = useState(0);
+  const [leftWidth, setLeftWidth] = useState(50);
+  const [codeHeight, setCodeHeight] = useState(60);
 
   /* ======================================
      ✅ Navigation flow (MCQ → Challenges → next)
@@ -223,169 +226,161 @@ const Challenges = () => {
 
   const challenges = getChallenges();
 
+  // Resizer functionality
+  const startDrag = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startLeftWidth = leftWidth;
+    
+    const doDrag = (e) => {
+      const containerWidth = 1200; // Approximate container width
+      const deltaX = e.clientX - startX;
+      const deltaPercent = (deltaX / containerWidth) * 100;
+      const newLeftWidth = Math.min(80, Math.max(20, startLeftWidth + deltaPercent));
+      setLeftWidth(newLeftWidth);
+    };
+    
+    const stopDrag = () => {
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+    
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  };
+
   /* ======================================
      ✅ Render Component
      ====================================== */
   return (
     <div className="challenges-layout">
-      <CourseSidebar courseId={courseId} currentModule={moduleId} />
-
-      <div className="challenges-main">
-        <ContentHeader
-          title="Coding Challenges"
-          subtitle={module.title}
-          prevPath={prevPath}
-          nextPath={nextPath}
-          currentTopic="Challenges"
-        />
-
-        <div className="challenges-content">
-          <div className="challenges-header">
-            <div className="header-info">
-              <h3>Practice Your Skills</h3>
-              <p>Solve these problems to master {module.title}</p>
-            </div>
-            <div className="challenges-stats">
-              <Code size={16} /> {challenges.length} Challenge
-              {challenges.length !== 1 ? 's' : ''}
-            </div>
-          </div>
-
-          <div className="challenges-list">
-            {challenges.map((challenge, index) => {
-              const isExpanded = expandedChallenges.has(index);
-              const userSolution = solutions[index] || challenge.initialCode || '';
-              const showHint = showHints[index];
-              const results = testResults[index];
-              const status = submissionStatus[index];
-
-              return (
-                <div key={index} className="challenge-card">
-                  <div
-                    className="challenge-header"
-                    onClick={() => toggleChallenge(index)}
-                  >
-                    <div className="challenge-info">
-                      <h4 className="challenge-title">{challenge.title}</h4>
-                      <div className="challenge-meta">
-                        <span
-                          className={`difficulty-badge ${getDifficultyColor(
-                            challenge.difficulty
-                          )}`}
-                        >
-                          {challenge.difficulty}
-                        </span>
-                        <span className="marks-badge">{challenge.marks} marks</span>
-                        <span className="time-badge">
-                          <Clock size={12} /> {Math.floor(challenge.timeLimit / 60)} min
-                        </span>
+      <ModuleNavigationHeader 
+        currentTopic="challenges"
+        moduleTitle={module?.title || 'Module'}
+        courseTitle="Python Programming"
+      />
+      
+          <div className="challenges-test-main">
+            <div className="coding-container">
+              {/* Left Panel - Problem Statement */}
+              <div className="coding-left" style={{ width: `${leftWidth}%` }}>
+                <div className="problem-statement">
+                  <h2>Challenge {currentChallenge + 1}: {challenges[currentChallenge]?.title}</h2>
+                  
+                  <div className="challenge-meta">
+                    <span className={`difficulty-badge ${getDifficultyColor(challenges[currentChallenge]?.difficulty)}`}>
+                      {challenges[currentChallenge]?.difficulty}
+                    </span>
+                    <span className="marks-badge">{challenges[currentChallenge]?.marks} marks</span>
+                    <span className="time-badge">
+                      <Clock size={12} /> {Math.floor((challenges[currentChallenge]?.timeLimit || 1800) / 60)} min
+                    </span>
+                  </div>
+                  
+                  <div className="problem-description">
+                    <p>{challenges[currentChallenge]?.description}</p>
+                    
+                    {challenges[currentChallenge]?.hint && showHints[currentChallenge] && (
+                      <div className="hint-section">
+                        <h3>💡 Hint:</h3>
+                        <p>{challenges[currentChallenge].hint}</p>
                       </div>
-                    </div>
-                    <div className="expand-icon">
-                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    )}
+                    
+                    <div className="sample-cases">
+                      <h3>Sample Test Cases:</h3>
+                      <div className="testcase-block">
+                        <strong>Input:</strong>
+                        <pre>{challenges[currentChallenge]?.sampleInput}</pre>
+                        <strong>Output:</strong>
+                        <pre>{challenges[currentChallenge]?.sampleOutput}</pre>
+                      </div>
                     </div>
                   </div>
-
-                  {isExpanded && (
-                    <div className="challenge-body">
-                      <p className="challenge-description">{challenge.description}</p>
-
-                      <div className="sample-section">
-                        <p>
-                          <strong>Sample Input:</strong>{' '}
-                          <code>{challenge.sampleInput}</code>
-                        </p>
-                        <p>
-                          <strong>Sample Output:</strong>{' '}
-                          <code>{challenge.sampleOutput}</code>
-                        </p>
-                      </div>
-
-                      <div className="code-editor-section">
-                        <div className="editor-actions">
-                          <button
-                            onClick={() => toggleHint(index)}
-                            className="hint-button"
-                          >
-                            <Lightbulb size={14} />{' '}
-                            {showHint ? 'Hide Hint' : 'Show Hint'}
-                          </button>
-                          <button
-                            onClick={() => resetChallenge(index)}
-                            className="reset-button"
-                          >
-                            <RotateCcw size={14} /> Reset
-                          </button>
-                        </div>
-
-                        {showHint && (
-                          <div className="hint-section">
-                            💡 {challenge.hint || 'Try breaking the problem into smaller steps.'}
-                          </div>
-                        )}
-
-                        <textarea
-                          className="code-textarea"
-                          value={userSolution}
-                          onChange={(e) => handleSolutionChange(index, e.target.value)}
-                          spellCheck={false}
-                        />
-
-                        <div className="editor-controls">
-                          <button
-                            onClick={() => runTests(index)}
-                            className="run-button"
-                          >
-                            <Play size={14} /> Run Tests
-                          </button>
-                          <button
-                            onClick={() => submitSolution(index)}
-                            className="submit-button"
-                            disabled={status === 'submitting'}
-                          >
-                            <Send size={14} />
-                            {status === 'submitting'
-                              ? 'Submitting...'
-                              : status === 'accepted'
-                              ? 'Accepted ✅'
-                              : status === 'rejected'
-                              ? 'Try Again ❌'
-                              : 'Submit'}
-                          </button>
-                        </div>
-                      </div>
-
-                      {results && (
-                        <div
-                          className={`test-results ${
-                            results.success ? 'success' : 'failure'
-                          }`}
-                        >
-                          <p>{results.message}</p>
-                          <div className="test-cases">
-                            {results.testCases.map((t, i) => (
-                              <div
-                                key={i}
-                                className={`test-case ${
-                                  t.passed ? 'passed' : 'failed'
-                                }`}
-                              >
-                                <strong>Input:</strong> {t.input} |{' '}
-                                <strong>Expected:</strong> {t.expected} |{' '}
-                                <strong>Actual:</strong> {t.actual}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
-              );
-            })}
+              </div>
+
+              {/* Resizer */}
+              <div className="resizer" onMouseDown={startDrag} />
+
+              {/* Right Panel - Code Editor and Output */}
+              <div className="coding-right" style={{ width: `${100 - leftWidth}%` }}>
+                <div className="editor-toolbar">
+                  <div className="toolbar-buttons">
+                    <button
+                      onClick={() => toggleHint(currentChallenge)}
+                      className="hint-button"
+                    >
+                      <Lightbulb size={14} />
+                      {showHints[currentChallenge] ? 'Hide Hint' : 'Show Hint'}
+                    </button>
+                    <button
+                      onClick={() => resetChallenge(currentChallenge)}
+                      className="reset-button"
+                    >
+                      <RotateCcw size={14} /> Reset
+                    </button>
+                    <button
+                      onClick={() => runTests(currentChallenge)}
+                      className="run-button"
+                    >
+                      <Play size={14} /> Run Tests
+                    </button>
+                    <button
+                      onClick={() => submitSolution(currentChallenge)}
+                      className="submit-button"
+                      disabled={submissionStatus[currentChallenge] === 'submitting'}
+                    >
+                      <Send size={14} />
+                      {submissionStatus[currentChallenge] === 'submitting'
+                        ? 'Submitting...'
+                        : submissionStatus[currentChallenge] === 'accepted'
+                        ? 'Accepted ✅'
+                        : submissionStatus[currentChallenge] === 'rejected'
+                        ? 'Try Again ❌'
+                        : 'Submit'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Code Editor Area */}
+                <div className="code-editor-area" style={{ height: `${codeHeight}%` }}>
+                  <textarea
+                    className="code-textarea"
+                    value={solutions[currentChallenge] || challenges[currentChallenge]?.initialCode || ''}
+                    onChange={(e) => handleSolutionChange(currentChallenge, e.target.value)}
+                    placeholder="Write your solution here..."
+                    spellCheck={false}
+                  />
+                </div>
+
+                {/* Output Section */}
+                {testResults[currentChallenge] && (
+                  <div className="output-area" style={{ height: `${100 - codeHeight}%` }}>
+                    <div className="output-section">
+                      <div className="output-header">
+                        <h3>Test Results</h3>
+                      </div>
+                      <div className={`test-results ${testResults[currentChallenge]?.success ? 'success' : 'failure'}`}>
+                        <p>{testResults[currentChallenge]?.message}</p>
+                        <div className="test-cases">
+                          {testResults[currentChallenge]?.testCases?.map((t, i) => (
+                            <div key={i} className={`test-case ${t.passed ? 'passed' : 'failed'}`}>
+                              <strong>Input:</strong> {t.input} | <strong>Expected:</strong> {t.expected} | <strong>Actual:</strong> {t.actual}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+      
+      <ModuleNavigationFooter 
+        currentTopic="challenges"
+      />
     </div>
   );
 };

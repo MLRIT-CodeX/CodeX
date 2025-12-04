@@ -7,8 +7,11 @@ import ModuleTestResultPage from '../components/ModuleTestResultPage';
 import './ModuleTestPage.css';
 
 const ModuleTestPage = () => {
-  const { courseId, topicId } = useParams();
+  const { courseId, topicId, moduleId } = useParams();
   const navigate = useNavigate();
+  
+  // Support both old topic-based and new module-based URLs
+  const actualModuleId = moduleId || topicId;
 
   // Error boundary state
   const [hasError, setHasError] = useState(false);
@@ -75,7 +78,7 @@ int main() {
       setHasError(true);
       setErrorMessage('Failed to initialize test');
     }
-  }, [courseId, topicId]);
+  }, [courseId, actualModuleId]);
 
   const fetchCourseAndModuleTest = async () => {
     try {
@@ -84,7 +87,7 @@ int main() {
         axios.get(`http://localhost:5000/api/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get(`http://localhost:5000/api/courses/${courseId}/topics/${topicId}/test`, {
+        axios.get(`http://localhost:5000/api/courses/${courseId}/modules/${actualModuleId}/test`, {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -92,14 +95,16 @@ int main() {
       // Set course data
       setCourse(courseResponse.data);
 
-      // Process test data (existing logic)
-      const testData = testResponse.data;
+      // Process test data (new API structure)
+      const responseData = testResponse.data;
       
-      if (!testData) {
-        throw new Error('No test data received');
+      if (!responseData || !responseData.moduleTest) {
+        throw new Error('No module test data received');
       }
       
-      setTopic({ title: testData.topicTitle || 'Module Test' });
+      const testData = responseData.moduleTest;
+      
+      setTopic({ title: responseData.module?.title || testData.title || 'Module Test' });
       setModuleTest({
         mcqs: Array.isArray(testData.mcqs) ? testData.mcqs : [],
         codeChallenges: Array.isArray(testData.codeChallenges) ? testData.codeChallenges : [],
@@ -524,10 +529,10 @@ int main() {
         {
           userId: userId,
           courseId: courseId,
-          topicId: topicId,
+          moduleId: actualModuleId,
           answers: answers,
           codingAnswers: backendCodingAnswers,
-          topicTitle: topic?.title || 'Module Test',
+          moduleTitle: topic?.title || 'Module Test',
           timeTaken: timeTaken
         },
         {
@@ -538,20 +543,66 @@ int main() {
       console.log('✅ Module test results submitted successfully:', response.data);
       
       // Use the enhanced test result from backend
-      const enhancedTestResult = response.data.testResult;
-      setTestResults(enhancedTestResult);
-      setScore(enhancedTestResult.percentage);
-      setShowDetailedResults(true);
+      let enhancedTestResult = response.data.testResult;
+      
+      // Handle case where backend returns different structure
+      if (!enhancedTestResult && response.data.scores) {
+        // Create testResult from scores data
+        const scores = response.data.scores;
+        const totalMarks = (moduleTest?.totalMarks) || ((scores.totalMCQs * 10) + 20); // Estimate total marks
+        enhancedTestResult = {
+          totalScore: scores.totalScore,
+          totalMarks: totalMarks,
+          percentage: totalMarks > 0 ? Math.round((scores.totalScore / totalMarks) * 100) : 0,
+          correctAnswers: scores.correctMCQs,
+          wrongAnswers: scores.totalMCQs - scores.correctMCQs,
+          unattempted: allQuestions.length - Object.keys(savedAnswers).length,
+          totalQuestions: allQuestions.length,
+          mcqScore: scores.mcqScore,
+          codingScore: scores.codingScore,
+          totalMcqMarks: scores.totalMCQs * 10, // Estimate 10 marks per MCQ
+          totalCodingMarks: 20, // Estimate coding marks
+          mcqCorrect: scores.correctMCQs,
+          codingCorrect: 0,
+          codingIncorrect: 0,
+          timeTaken: timeTaken
+        };
+      }
+      
+      if (enhancedTestResult) {
+        setTestResults(enhancedTestResult);
+        setScore(enhancedTestResult.percentage);
+        setShowDetailedResults(true);
+      } else {
+        console.error('❌ No valid test result structure found in response');
+        throw new Error('Invalid response structure from backend');
+      }
       
     } catch (error) {
       console.error('❌ Error submitting module test results:', {
-        error: error.message,
+        message: error.message,
         response: error.response?.data,
         status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        method: error.config?.method,
+        data: error.config?.data,
+        code: error.code,
         userId,
         courseId,
-        topicId
+        moduleId: actualModuleId
       });
+      
+      // More detailed error logging
+      if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+        console.error('🚫 Cannot connect to backend server. Make sure server is running on http://localhost:5000');
+      } else if (error.response?.status === 500) {
+        console.error('🔥 Server error:', error.response?.data);
+      } else if (error.response?.status === 404) {
+        console.error('🔍 Endpoint not found:', error.config?.url);
+      } else if (error.response?.status === 403 || error.response?.status === 401) {
+        console.error('🔐 Authentication error. Please check your login status.');
+      }
       
       // Fallback to local calculation if backend fails
       const fallbackResult = {
@@ -614,10 +665,10 @@ int main() {
         {
           userId: userId,
           courseId: courseId,
-          topicId: topicId,
+          moduleId: actualModuleId,
           answers: answers,
           codingAnswers: backendCodingAnswers,
-          topicTitle: topic?.title || 'Module Test',
+          moduleTitle: topic?.title || 'Module Test',
           timeTaken: timeTaken
         },
         {
@@ -628,20 +679,55 @@ int main() {
       console.log('✅ Empty module test results submitted successfully:', response.data);
       
       // Use the enhanced test result from backend
-      const enhancedTestResult = response.data.testResult;
-      setTestResults(enhancedTestResult);
-      setScore(enhancedTestResult.percentage);
-      setShowDetailedResults(true);
+      let enhancedTestResult = response.data.testResult;
+      
+      // Handle case where backend returns different structure
+      if (!enhancedTestResult && response.data.scores) {
+        // Create testResult from scores data for empty submission
+        const scores = response.data.scores;
+        const totalMarks = (moduleTest?.totalMarks) || 100;
+        enhancedTestResult = {
+          totalScore: 0,
+          totalMarks: totalMarks,
+          percentage: 0,
+          correctAnswers: 0,
+          wrongAnswers: 0,
+          unattempted: allQuestions.length,
+          totalQuestions: allQuestions.length,
+          mcqScore: 0,
+          codingScore: 0,
+          totalMcqMarks: scores.totalMCQs * 10,
+          totalCodingMarks: 20,
+          mcqCorrect: 0,
+          codingCorrect: 0,
+          codingIncorrect: 0,
+          timeTaken: timeTaken
+        };
+      }
+      
+      if (enhancedTestResult) {
+        setTestResults(enhancedTestResult);
+        setScore(enhancedTestResult.percentage);
+        setShowDetailedResults(true);
+      }
       
     } catch (error) {
       console.error('❌ Error submitting empty module test results:', {
-        error: error.message,
+        message: error.message,
         response: error.response?.data,
         status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        code: error.code,
         userId,
         courseId,
-        topicId
+        moduleId: actualModuleId
       });
+      
+      // More detailed error logging for empty submission
+      if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+        console.error('🚫 Cannot connect to backend server for empty submission');
+      }
       
       // Fallback result
       const fallbackResult = {
@@ -712,7 +798,7 @@ int main() {
       <ModuleTestResultPage
         testResults={testResults}
         courseId={courseId}
-        topicId={topicId}
+        topicId={actualModuleId}
         topic={topic}
         moduleTest={moduleTest}
         onRetakeTest={() => {

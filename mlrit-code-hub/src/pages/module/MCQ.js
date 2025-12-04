@@ -9,8 +9,8 @@ import {
   AlertCircle,
   TrendingUp
 } from 'lucide-react';
-import CourseSidebar from '../../components/CourseSidebar';
-import ContentHeader from '../../components/ContentHeader';
+import ModuleNavigationHeader from '../../components/ModuleNavigationHeader';
+import ModuleNavigationFooter from '../../components/ModuleNavigationFooter';
 import { useModuleData } from '../../hooks/useModuleData';
 import './MCQ.css';
 
@@ -24,6 +24,7 @@ const MCQ = () => {
   const [results, setResults] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
+  const [currentQuestion, setCurrentQuestion] = useState(0);
 
   // ✅ Timer
   useEffect(() => {
@@ -36,6 +37,20 @@ const MCQ = () => {
   // ✅ Navigation paths
   const prevPath = `/courses/${courseId}/module/${moduleId}/lecture`;
   const nextPath = `/courses/${courseId}/module/${moduleId}/challenges`;
+
+  // ✅ Question navigation
+  const prevQuestion = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
+  };
+
+  const nextQuestion = () => {
+    const questions = getQuestions();
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  };
 
   // ✅ Answer selection
   const handleAnswerChange = (index, optionIndex) => {
@@ -177,103 +192,58 @@ const MCQ = () => {
      ====================================== */
   return (
     <div className="mcq-layout">
-      <CourseSidebar courseId={courseId} currentModule={moduleId} />
+      <ModuleNavigationHeader 
+        currentTopic="mcq"
+        moduleTitle={module?.title || 'Module'}
+        courseTitle="Python Programming"
+      />
+      
       <div className="mcq-main">
-        <ContentHeader
-          title="MCQ Practice"
-          subtitle={module.title}
-          prevPath={prevPath}
-          nextPath={nextPath}
-          currentTopic="MCQ"
-        />
-
-        <div className="mcq-content">
-          {!submitted ? (
-            <>
-              {/* Header and Progress */}
-              <div className="mcq-header">
-                <div className="quiz-info">
-                  <h3>Test Your Understanding</h3>
-                  <p>Answer questions from {module.title}</p>
-                </div>
-
-                <div className="quiz-stats">
-                  <div className="stat">
-                    <Clock size={16} />
-                    <span>{formatTime(timeSpent)}</span>
-                  </div>
-                  <div className="stat">
-                    <TrendingUp size={16} />
-                    <span>
-                      {answeredCount}/{questions.length}
-                    </span>
-                  </div>
+        {!submitted ? (
+          <>
+            {/* Left Panel - Question Statement */}
+            <div className="test-left-panel">
+              <div className="question-statement">
+                <div className="question-number">Question {currentQuestion + 1}</div>
+                <div className="question-text">
+                  {questions[currentQuestion]?.question}
                 </div>
               </div>
+            </div>
 
-              <div className="progress-section">
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${progressPercent}%` }}
-                  ></div>
+            {/* Right Panel - MCQ Options */}
+            <div className="test-right-panel">
+              <div className="mcq-options">
+                <h3>Choose the correct answer:</h3>
+                <div className="options-list">
+                  {(questions[currentQuestion]?.options || []).map((option, index) => (
+                    <label key={index} className={`mcq-option ${answers[currentQuestion] === index ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name={`question-${currentQuestion}`}
+                        value={index}
+                        checked={answers[currentQuestion] === index}
+                        onChange={() => handleAnswerChange(currentQuestion, index)}
+                        className="mcq-radio"
+                      />
+                      <span className="option-text">{option}</span>
+                    </label>
+                  ))}
                 </div>
-                <span className="progress-text">{progressPercent}% Complete</span>
-              </div>
 
-              {/* MCQ List */}
-              <div className="questions-container">
-                {questions.map((q, i) => (
-                  <div key={i} className="question-card">
-                    <div className="question-header">
-                      <span className="question-number">Question {i + 1}</span>
-                      <span className={`difficulty-badge ${q.difficulty || 'medium'}`}>
-                        {q.difficulty || 'medium'}
-                      </span>
-                    </div>
-
-                    <div className="question-text">
-                      <h4>{q.question}</h4>
-                    </div>
-
-                    <div className="options-container">
-                      {q.options.map((opt, j) => (
-                        <label
-                          key={j}
-                          className={`option-label ${answers[i] === j ? 'selected' : ''}`}
-                        >
-                          <input
-                            type="radio"
-                            name={`question-${i}`}
-                            value={j}
-                            checked={answers[i] === j}
-                            onChange={() => handleAnswerChange(i, j)}
-                            className="option-input"
-                          />
-                          <span className="option-text">
-                            <span className="option-letter">{String.fromCharCode(65 + j)}</span>
-                            {opt}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
+                {/* Submit Button - Only on last question */}
+                {currentQuestion === questions.length - 1 && (
+                  <div className="mcq-actions">
+                    <button onClick={handleSubmit} className="submit-quiz-button" disabled={answeredCount === 0}>
+                      <Award size={16} />
+                      Submit Quiz
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
-
-              {/* Submit */}
-              <div className="submit-section">
-                <button
-                  onClick={handleSubmit}
-                  className="submit-button"
-                  disabled={answeredCount === 0}
-                >
-                  <Award size={16} />
-                  Submit ({answeredCount}/{questions.length})
-                </button>
-              </div>
-            </>
-          ) : (
+            </div>
+          </>
+        ) : (
             // ✅ Results Section
             <div className="results-container">
               <div className={`score-display ${getScoreColor(results.score)}`}>
@@ -333,7 +303,10 @@ const MCQ = () => {
             </div>
           )}
         </div>
-      </div>
+      
+      <ModuleNavigationFooter 
+        currentTopic="mcq"
+      />
     </div>
   );
 };

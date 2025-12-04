@@ -193,20 +193,20 @@ const ModuleTestResultPage = ({
                 <span>Multiple Choice</span>
               </div>
               <div className="attempted">
-                {correctedTestResults.mcqCorrect + (correctedTestResults.wrongAnswers - correctedTestResults.codingIncorrect || 0)}
+                {(correctedTestResults.mcqCorrect || 0) + ((correctedTestResults.wrongAnswers || 0) - (correctedTestResults.codingIncorrect || 0))}
               </div>
               <div className="correct">
-                {correctedTestResults.mcqCorrect}
+                {correctedTestResults.mcqCorrect || 0}
               </div>
               <div className="marks-earned">
-                {correctedTestResults.mcqScore}
+                {correctedTestResults.mcqScore || 0}
               </div>
               <div className="total-marks">
-                {correctedTestResults.totalMcqMarks}
+                {correctedTestResults.totalMcqMarks || 0}
               </div>
               <div className="accuracy">
-                {correctedTestResults.mcqCorrect > 0 ? 
-                  Math.round((correctedTestResults.mcqCorrect / (correctedTestResults.mcqCorrect + (correctedTestResults.wrongAnswers - (correctedTestResults.codingIncorrect || 0)))) * 100) + '%' : 
+                {(correctedTestResults.mcqCorrect || 0) > 0 ? 
+                  Math.round(((correctedTestResults.mcqCorrect || 0) / ((correctedTestResults.mcqCorrect || 0) + ((correctedTestResults.wrongAnswers || 0) - (correctedTestResults.codingIncorrect || 0)))) * 100) + '%' : 
                   '0%'}
               </div>
               <div className="performance">
@@ -214,7 +214,7 @@ const ModuleTestResultPage = ({
                   <div 
                     className="performance-fill"
                     style={{
-                      width: `${(correctedTestResults.mcqScore / correctedTestResults.totalMcqMarks) * 100}%`,
+                      width: `${(correctedTestResults.totalMcqMarks || 0) > 0 ? ((correctedTestResults.mcqScore || 0) / (correctedTestResults.totalMcqMarks || 0)) * 100 : 0}%`,
                       backgroundColor: '#3b82f6'
                     }}
                   ></div>
@@ -235,10 +235,10 @@ const ModuleTestResultPage = ({
                   {correctedTestResults.codingCorrect || 0}
                 </div>
                 <div className="marks-earned">
-                  {correctedTestResults.codingScore}
+                  {correctedTestResults.codingScore || 0}
                 </div>
                 <div className="total-marks">
-                  {correctedTestResults.totalCodingMarks}
+                  {correctedTestResults.totalCodingMarks || 0}
                 </div>
                 <div className="accuracy">
                   {correctedTestResults.codingAttempted > 0 ? 
@@ -250,7 +250,7 @@ const ModuleTestResultPage = ({
                     <div 
                       className="performance-fill"
                       style={{
-                        width: `${(correctedTestResults.codingScore / correctedTestResults.totalCodingMarks) * 100}%`,
+                        width: `${(correctedTestResults.totalCodingMarks || 0) > 0 ? ((correctedTestResults.codingScore || 0) / (correctedTestResults.totalCodingMarks || 0)) * 100 : 0}%`,
                         backgroundColor: '#10b981'
                       }}
                     ></div>
@@ -265,20 +265,20 @@ const ModuleTestResultPage = ({
                 <span>Total</span>
               </div>
               <div className="attempted">
-                {correctedTestResults.correctAnswers + correctedTestResults.wrongAnswers}
+                {(correctedTestResults.correctAnswers || 0) + (correctedTestResults.wrongAnswers || 0)}
               </div>
               <div className="correct">
-                {correctedTestResults.correctAnswers}
+                {correctedTestResults.correctAnswers || 0}
               </div>
               <div className="marks-earned">
-                {correctedTestResults.totalScore}
+                {correctedTestResults.totalScore || 0}
               </div>
               <div className="total-marks">
-                {correctedTestResults.totalMarks}
+                {correctedTestResults.totalMarks || 0}
               </div>
               <div className="accuracy">
-                {correctedTestResults.correctAnswers > 0 ? 
-                  Math.round((correctedTestResults.correctAnswers / (correctedTestResults.correctAnswers + correctedTestResults.wrongAnswers)) * 100) + '%' : 
+                {(correctedTestResults.correctAnswers || 0) > 0 ? 
+                  Math.round(((correctedTestResults.correctAnswers || 0) / ((correctedTestResults.correctAnswers || 0) + (correctedTestResults.wrongAnswers || 0))) * 100) + '%' : 
                   '0%'}
               </div>
               <div className="performance">
@@ -286,8 +286,8 @@ const ModuleTestResultPage = ({
                   <div 
                     className="performance-fill"
                     style={{
-                      width: `${correctedTestResults.percentage}%`,
-                      backgroundColor: correctedTestResults.percentage >= 40 ? '#10b981' : '#ef4444'
+                      width: `${correctedTestResults.percentage || 0}%`,
+                      backgroundColor: (correctedTestResults.percentage || 0) >= 40 ? '#10b981' : '#ef4444'
                     }}
                   ></div>
                 </div>

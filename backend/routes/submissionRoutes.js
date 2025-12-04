@@ -19,28 +19,35 @@ router.get("/stats/user", authenticateToken, async (req, res) => {
     
     console.log(`📊 Found ${submissions.length} total submissions`);
 
-    // Track unique solved problems by type
-    const solvedPracticeProblems = new Set();
-    const solvedCourseProblems = new Set();
+    // Track unique solved problems by type with their scores
+    const solvedPracticeProblems = new Map();
+    const solvedCourseProblems = new Map();
     let totalScore = 0;
     let courseScore = 0;
     let problemScore = 0;
 
-    // Calculate stats
+    // Calculate stats - only count each problem once
     submissions.forEach(sub => {
       if (sub.isSuccess && sub.problem) {
+        const problemId = sub.problem._id.toString();
         const score = sub.problem.score || 0;
-        totalScore += score;
         
         if (sub.problem.type === 'course') {
-          courseScore += score;
-          solvedCourseProblems.add(sub.problem._id.toString());
+          if (!solvedCourseProblems.has(problemId)) {
+            solvedCourseProblems.set(problemId, score);
+            courseScore += score;
+          }
         } else {
-          problemScore += score;
-          solvedPracticeProblems.add(sub.problem._id.toString());
+          if (!solvedPracticeProblems.has(problemId)) {
+            solvedPracticeProblems.set(problemId, score);
+            problemScore += score;
+          }
         }
       }
     });
+
+    // Calculate total score from unique problems only
+    totalScore = courseScore + problemScore;
 
     // Get global rankings
     const rankings = await Submission.aggregate([
@@ -71,13 +78,28 @@ router.get("/stats/user", authenticateToken, async (req, res) => {
     const practiceSubmissions = submissions.filter(s => !s.problem || s.problem.type !== 'course');
     const courseSubmissions = submissions.filter(s => s.problem && s.problem.type === 'course');
 
+    // Calculate final stats
+    const totalSolvedProblems = solvedPracticeProblems.size + solvedCourseProblems.size;
+    const successRate = submissions.length > 0 ? 
+      Math.round((submissions.filter(s => s.isSuccess).length / submissions.length) * 100) : 0;
+
+    console.log(`📊 User stats calculated:`, {
+      totalScore,
+      totalSolved: totalSolvedProblems,
+      courseProblems: solvedCourseProblems.size,
+      practiceProblems: solvedPracticeProblems.size
+    });
+
     res.json({
       // Overall stats
       totalScore,
       courseScore,
       problemScore,
+      problemsSolved: totalSolvedProblems,
+      problemsAttempted: totalSolvedProblems, // For now, same as solved
       totalSubmissions: submissions.length,
       successfulSubmissions: submissions.filter(s => s.isSuccess).length,
+      successRate,
       rank: userRank || 1,
       totalUsers: rankings.length,
       
@@ -226,12 +248,35 @@ router.get("/user-stats", authenticateToken, async (req, res) => {
     // Calculate success rate
     const successRate = totalSubmissions > 0 ? (successfulSubmissions / totalSubmissions) * 100 : 0;
 
+    // Calculate total score from unique solved problems only
+    const submissions = await Submission.find({
+      user: userId,
+      isSuccess: true
+    }).populate('problem', 'score');
+
+    // Track unique problems to avoid double counting
+    const uniqueProblems = new Map();
+    let totalScore = 0;
+    
+    submissions.forEach(submission => {
+      if (submission.problem && submission.problem.score) {
+        const problemId = submission.problem._id.toString();
+        if (!uniqueProblems.has(problemId)) {
+          uniqueProblems.set(problemId, submission.problem.score);
+          totalScore += submission.problem.score;
+        }
+      }
+    });
+
+    console.log(`📊 User ${userId} stats: ${uniqueProblems.size} unique problems, total score: ${totalScore}`);
+
     const userStats = {
       problemsSolved: problemsSolved.length,
       problemsAttempted: problemsAttempted.length,
       totalSubmissions,
       successfulSubmissions,
-      successRate: Math.round(successRate * 100) / 100
+      successRate: Math.round(successRate * 100) / 100,
+      totalScore: totalScore
     };
 
     res.json(userStats);

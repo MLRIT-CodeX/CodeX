@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import CourseSidebar from '../../components/CourseSidebar';
-import ContentHeader from '../../components/ContentHeader';
+import ModuleNavigationHeader from '../../components/ModuleNavigationHeader';
+import ModuleNavigationFooter from '../../components/ModuleNavigationFooter';
 import { useModuleData } from '../../hooks/useModuleData';
 import './Theory.css';
 
@@ -20,6 +20,9 @@ const getMockTheoryData = () => ({
 const Theory = () => {
   const { courseId, moduleId } = useParams();
   const navigate = useNavigate();
+
+  // ✅ Debug logging
+  console.log('🔍 Theory page loaded with params:', { courseId, moduleId });
 
   // ✅ Unified data fetching using shared hook
   const { module, loading, error } = useModuleData(courseId, moduleId);
@@ -108,16 +111,14 @@ const Theory = () => {
   const totalSlides = pptSlides.length || 0;
 
   return (
-    <div className="theory-layout">
-      <CourseSidebar courseId={courseId} currentModule={moduleId} />
-
+    <div className="theory-container">
+      <ModuleNavigationHeader 
+        currentTopic="theory"
+        moduleTitle={module?.title || 'Module'}
+        courseTitle="Python Programming" // You can make this dynamic
+      />
+      
       <div className="theory-main">
-        <ContentHeader
-          title="Theory Materials"
-          subtitle={module.title}
-          currentTopic="Theory"
-        />
-
         <div className="theory-content">
           {/* ✅ Tabs */}
           <div className="theory-tabs">
@@ -238,6 +239,10 @@ const Theory = () => {
           </div>
         </div>
       </div>
+      
+      <ModuleNavigationFooter 
+        currentTopic="theory"
+      />
     </div>
   );
 };

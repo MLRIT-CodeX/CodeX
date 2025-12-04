@@ -16,8 +16,12 @@ export const useModuleData = (courseId, moduleId) => {
   const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
   const fetchModuleData = useCallback(async () => {
-    if (!courseId || !moduleId || !token) return;
+    if (!courseId || !moduleId || !token) {
+      console.log('🚫 Missing required params for module data:', { courseId, moduleId, hasToken: !!token });
+      return;
+    }
 
+    console.log('📡 Fetching module data:', { courseId, moduleId });
     const controller = new AbortController();
     const signal = controller.signal;
 
@@ -34,6 +38,7 @@ export const useModuleData = (courseId, moduleId) => {
       );
 
       if (response.data) {
+        console.log('✅ Module data received:', response.data);
         setModule(response.data);
       } else {
         throw new Error('No module data received');

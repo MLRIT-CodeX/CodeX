@@ -8,14 +8,119 @@ const { authenticateToken, isAdmin } = require("../middleware/authMiddleware");
 
 /* ================================
    ✅ Health Check
-   ================================ */
+================================ */
 router.get("/health", (req, res) => {
   res.json({ status: "ok", message: "Course API is running" });
 });
 
 /* ================================
+   ✅ Get total MCQ count from all courses
+================================ */
+router.get("/mcq-totals", authenticateToken, async (req, res) => {
+  try {
+    console.log('� MCQ TOTALS ROUTE HIT! 🚨');
+    console.log('�🔍 MCQ Totals API called by user:', req.user?.email || 'Unknown');
+    console.log('🔍 Fetching total MCQ counts from all courses...');
+    
+    const courses = await Course.find({}).select('modules topics finalExam title');
+    console.log(`📚 Found ${courses.length} courses in database`);
+    
+    let totalModuleTestMCQs = 0;
+    let totalFinalExamMCQs = 0;
+    
+    courses.forEach(course => {
+      console.log(`📚 Processing course: ${course.title || course._id}`);
+      
+      // Count module test MCQs - check both 'modules' and 'topics' properties
+      const moduleArray = course.modules || course.topics || [];
+      
+      if (moduleArray && moduleArray.length > 0) {
+        console.log(`  Found ${moduleArray.length} modules/topics`);
+        moduleArray.forEach((module, index) => {
+          // Count ONLY Module Test MCQs (not direct module MCQs)
+          let moduleMCQs = 0;
+          
+          // Check moduleTest.mcqs (the actual property name)
+          if (module.moduleTest && module.moduleTest.mcqs) {
+            moduleMCQs += module.moduleTest.mcqs.length;
+          }
+          
+          // Check moduleTest.mcqQuestions (alternative name)
+          if (module.moduleTest && module.moduleTest.mcqQuestions) {
+            moduleMCQs += module.moduleTest.mcqQuestions.length;
+          }
+          
+          // Check test.mcqs (legacy naming)
+          if (module.test && module.test.mcqs) {
+            moduleMCQs += module.test.mcqs.length;
+          }
+          
+          // Check test.mcqQuestions (legacy naming)
+          if (module.test && module.test.mcqQuestions) {
+            moduleMCQs += module.test.mcqQuestions.length;
+          }
+          
+          // NOTE: Excluded direct module.mcqs and module.mcqQuestions 
+          // to count only actual module test assessments
+          
+          if (moduleMCQs > 0) {
+            console.log(`    Module ${index + 1}: ${moduleMCQs} MCQs`);
+            totalModuleTestMCQs += moduleMCQs;
+          }
+        });
+      } else {
+        console.log(`  No modules/topics found in course`);
+      }
+      
+        // Count final exam MCQs - check multiple possible locations
+      if (course.finalExam) {
+        let finalExamMCQs = 0;
+        
+        // Check finalExam.mcqs
+        if (course.finalExam.mcqs) {
+          finalExamMCQs += course.finalExam.mcqs.length;
+        }
+        
+        // Check finalExam.mcqQuestions
+        if (course.finalExam.mcqQuestions) {
+          finalExamMCQs += course.finalExam.mcqQuestions.length;
+        }
+        
+        // Check if finalExam has questions array
+        if (course.finalExam.questions) {
+          finalExamMCQs += course.finalExam.questions.length;
+        }        if (finalExamMCQs > 0) {
+          console.log(`  Final Exam: ${finalExamMCQs} MCQs`);
+          totalFinalExamMCQs += finalExamMCQs;
+        } else {
+          console.log(`  Final Exam: no MCQs found`);
+        }
+      } else {
+        console.log(`  No final exam found in course`);
+      }
+    });
+    
+    const totalMCQs = totalModuleTestMCQs + totalFinalExamMCQs;
+    
+    console.log('📊 MCQ Count Summary:');
+    console.log(`  - Module Test MCQs: ${totalModuleTestMCQs}`);
+    console.log(`  - Final Exam MCQs: ${totalFinalExamMCQs}`);
+    console.log(`  - Total MCQs: ${totalMCQs}`);
+    
+    res.json({
+      moduleTestMCQs: totalModuleTestMCQs,
+      finalExamMCQs: totalFinalExamMCQs,
+      totalMCQs: totalMCQs
+    });
+  } catch (err) {
+    console.error("❌ Error fetching MCQ totals:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* ================================
    ✅ Get all courses
-   ================================ */
+================================ */
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const courses = await Course.find()
@@ -29,31 +134,45 @@ router.get("/", authenticateToken, async (req, res) => {
 
 /* ================================
    ✅ Get user's enrolled courses
-   ================================ */
+   (ONLY ONE VERSION - CLEAN)
+================================ */
 router.get("/user/:userId", authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    const courses = await Course.find({ 'enrolledStudents.userId': userId })
-      .select('title description difficulty enrolledCount');
-    
+
+    console.log('=== GET USER COURSES DEBUG ===');
+
+    if (req.user.id !== userId && req.user.role !== "admin") {
+      console.log("❌ Access denied: User mismatch");
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    console.log("Fetching enrolled courses for:", userId);
+
+    const courses = await Course.find({
+      enrolledUsers: userId,
+      isActive: true
+    }).select("_id title description difficulty enrolledCount createdAt");
+
     res.json({
       courses,
       totalEnrolled: courses.length,
       stats: {
-        easy: courses.filter(c => c.difficulty.toLowerCase() === 'easy').length,
-        medium: courses.filter(c => c.difficulty.toLowerCase() === 'medium').length,
-        hard: courses.filter(c => c.difficulty.toLowerCase() === 'hard').length
+        easy: courses.filter(c => c.difficulty === "easy").length,
+        medium: courses.filter(c => c.difficulty === "medium").length,
+        hard: courses.filter(c => c.difficulty === "hard").length
       }
     });
+
   } catch (err) {
-    console.error("❌ Error fetching user's courses:", err);
+    console.error("❌ Error fetching user courses:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 /* ================================
    ✅ Get course by ID
-   ================================ */
+================================ */
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -72,7 +191,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
 
 /* ================================
    ✅ Get all modules for a course
-   ================================ */
+================================ */
 router.get("/:courseId/modules", authenticateToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.courseId)) {
@@ -82,7 +201,6 @@ router.get("/:courseId/modules", authenticateToken, async (req, res) => {
     const course = await Course.findById(req.params.courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    // Return sorted modules by order
     const modules = course.modules.sort((a, b) => a.order - b.order);
     res.json(modules);
   } catch (err) {
@@ -92,8 +210,8 @@ router.get("/:courseId/modules", authenticateToken, async (req, res) => {
 });
 
 /* ================================
-   ✅ Get single module by ID
-   ================================ */
+   ✅ Get single module
+================================ */
 router.get("/:courseId/modules/:moduleId", authenticateToken, async (req, res) => {
   try {
     const { courseId, moduleId } = req.params;
@@ -105,7 +223,6 @@ router.get("/:courseId/modules/:moduleId", authenticateToken, async (req, res) =
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    // ✅ Fix: ensure proper ObjectId match
     const module = course.modules.find(
       (mod) => mod._id.toString() === moduleId.toString()
     );
@@ -115,12 +232,11 @@ router.get("/:courseId/modules/:moduleId", authenticateToken, async (req, res) =
         message: "Module not found",
         availableModules: course.modules.map((m) => ({
           _id: m._id,
-          title: m.title,
-        })),
+          title: m.title
+        }))
       });
     }
 
-    // ✅ Return clean, frontend-safe structure
     res.json({
       _id: module._id,
       title: module.title,
@@ -134,17 +250,69 @@ router.get("/:courseId/modules/:moduleId", authenticateToken, async (req, res) =
       moduleTest: module.moduleTest || {},
       learningObjectives: module.learningObjectives || [],
       prerequisites: module.prerequisites || [],
-      estimatedDuration: module.estimatedDuration,
+      estimatedDuration: module.estimatedDuration
     });
+
   } catch (err) {
-    console.error("❌ Error fetching single module:", err);
+    console.error("❌ Error fetching module:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
 /* ================================
-   ✅ Add New Course (Admin Only)
-   ================================ */
+   ✅ Get Module Test Data
+================================ */
+router.get("/:courseId/modules/:moduleId/test", authenticateToken, async (req, res) => {
+  try {
+    const { courseId, moduleId } = req.params;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const module = course.modules.id(moduleId);
+    if (!module) {
+      return res.status(404).json({ message: "Module not found" });
+    }
+
+    if (!module.moduleTest || (!module.moduleTest.mcqs?.length && !module.moduleTest.codeChallenges?.length)) {
+      return res.status(404).json({ message: "Module test not found" });
+    }
+
+    // Return module test data
+    res.json({
+      moduleTest: {
+        title: module.moduleTest.title || `${module.title} Assessment`,
+        description: module.moduleTest.description || `Test your understanding of ${module.title}`,
+        duration: module.moduleTest.duration || 30,
+        totalMarks: module.moduleTest.totalMarks || 100,
+        passingScore: module.moduleTest.passingScore || 70,
+        mcqs: module.moduleTest.mcqs || [],
+        codeChallenges: module.moduleTest.codeChallenges || [],
+        isActive: module.moduleTest.isActive !== false
+      },
+      module: {
+        _id: module._id,
+        title: module.title,
+        description: module.description
+      },
+      course: {
+        _id: course._id,
+        title: course.title,
+        description: course.description
+      }
+    });
+
+  } catch (err) {
+    console.error("❌ Error fetching module test:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* ================================
+   ✅ Create New Course (Admin)
+================================ */
 router.post(
   "/",
   authenticateToken,
@@ -153,7 +321,7 @@ router.post(
     body("title").notEmpty(),
     body("description").notEmpty(),
     body("difficulty").optional().isIn(["easy", "medium", "hard"]),
-    body("modules").isArray().optional(),
+    body("modules").isArray().optional()
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -192,13 +360,12 @@ router.post(
           codeChallenges: selectedCoding,
           totalMarks: mcqMarks + codeMarks,
           duration: 120,
-          passingScore: 70,
+          passingScore: 70
         },
-        scoringConfig,
+        scoringConfig
       });
 
       const saved = await course.save();
-      console.log(`✅ Course "${title}" created with ${modules?.length || 0} modules`);
       res.status(201).json(saved);
     } catch (err) {
       console.error("❌ Error creating course:", err);
@@ -208,13 +375,13 @@ router.post(
 );
 
 /* ================================
-   ✅ Update Course Basic Info
-   ================================ */
+   ✅ Update Course Info
+================================ */
 router.patch("/:id/basic", authenticateToken, isAdmin, async (req, res) => {
   try {
     const { title, description, difficulty } = req.body;
-    const updateData = {};
 
+    const updateData = {};
     if (title) updateData.title = title.trim();
     if (description) updateData.description = description.trim();
     if (difficulty) updateData.difficulty = difficulty.toLowerCase();
@@ -226,6 +393,7 @@ router.patch("/:id/basic", authenticateToken, isAdmin, async (req, res) => {
     );
 
     if (!updated) return res.status(404).json({ message: "Course not found" });
+
     res.json(updated);
   } catch (err) {
     console.error("❌ Error updating course info:", err);
@@ -234,25 +402,26 @@ router.patch("/:id/basic", authenticateToken, isAdmin, async (req, res) => {
 });
 
 /* ================================
-   ✅ Enroll User in Course
-   ================================ */
+   ✅ Enroll User
+================================ */
 router.post("/:id/enroll", authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
     const course = await Course.findById(req.params.id);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    if (course.enrolledUsers.includes(userId))
-      return res.json({ message: "Already enrolled" });
+    const userId = req.user.id;
 
-    course.enrolledUsers.push(userId);
-    course.enrolledCount = course.enrolledUsers.length;
-    await course.save();
+    if (!course.enrolledUsers.includes(userId)) {
+      course.enrolledUsers.push(userId);
+      course.enrolledCount = course.enrolledUsers.length;
+      await course.save();
+    }
 
     res.json({
       message: "Enrolled successfully",
-      enrolledCount: course.enrolledCount,
+      enrolledCount: course.enrolledCount
     });
+
   } catch (err) {
     console.error("❌ Error enrolling user:", err);
     res.status(500).json({ message: err.message });
@@ -261,7 +430,7 @@ router.post("/:id/enroll", authenticateToken, async (req, res) => {
 
 /* ================================
    ✅ Unenroll User
-   ================================ */
+================================ */
 router.delete("/:id/unenroll", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -272,12 +441,14 @@ router.delete("/:id/unenroll", authenticateToken, async (req, res) => {
       (u) => u.toString() !== userId.toString()
     );
     course.enrolledCount = course.enrolledUsers.length;
+
     await course.save();
 
     res.json({
       message: "Unenrolled successfully",
-      enrolledCount: course.enrolledCount,
+      enrolledCount: course.enrolledCount
     });
+
   } catch (err) {
     console.error("❌ Error unenrolling user:", err);
     res.status(500).json({ message: err.message });
@@ -285,8 +456,8 @@ router.delete("/:id/unenroll", authenticateToken, async (req, res) => {
 });
 
 /* ================================
-   ✅ Delete Course (Admin)
-   ================================ */
+   🗑 Delete Course (Admin)
+================================ */
 router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
   try {
     const deleted = await Course.findByIdAndDelete(req.params.id);
@@ -298,5 +469,7 @@ router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+
 
 module.exports = router;

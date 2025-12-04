@@ -45,8 +45,9 @@ const loadMonacoEditor = () => {
         }, 100);
         setTimeout(() => {
           clearInterval(checkInterval);
+          console.warn('Monaco Editor loading timeout - using fallback');
           reject(new Error('Monaco loading timeout'));
-        }, 15000);
+        }, 30000); // Increased timeout to 30 seconds
         return;
       }
 

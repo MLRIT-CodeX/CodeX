@@ -255,13 +255,19 @@ const updateUserCourseScore = async (req, res) => {
         });
         const { topicId: testTopicId, mcqResults: testMcqResults = [], codingResults: testCodingResults = [] } = assessmentData;
         
-        // Fetch actual question marks from course model
-        const topic = course.topics.find(t => t._id.toString() === testTopicId.toString());
-        if (!topic || !topic.moduleTest) {
-          return res.status(404).json({ message: "Module test not found for this topic" });
+        // Safety check for topicId
+        if (!testTopicId) {
+          console.error('❌ Missing topicId in assessmentData for moduleTest');
+          return res.status(400).json({ message: "Missing module ID in assessment data" });
         }
         
-        const { mcqs: actualMcqs = [], codeChallenges: actualCodingQuestions = [] } = topic.moduleTest;
+        // Fetch actual question marks from course model
+        const module = course.modules.find(m => m._id.toString() === testTopicId.toString());
+        if (!module || !module.moduleTest) {
+          return res.status(404).json({ message: "Module test not found for this module" });
+        }
+        
+        const { mcqs: actualMcqs = [], codeChallenges: actualCodingQuestions = [] } = module.moduleTest;
         
         // Calculate MCQ score using actual question marks from course model
         const testMcqScore = testMcqResults.length > 0 ? 

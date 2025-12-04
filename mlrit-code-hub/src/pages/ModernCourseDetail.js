@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import PropTypes from 'prop-types';
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { 
@@ -28,7 +29,7 @@ import { shouldShowNavbar } from "../utils/navbarUtils";
 import "./ModernCourseDetail.css";
 
 // About Section Component
-const AboutSection = ({ courseId, token }) => {
+const AboutSection = ({ courseId, userId, token, refreshTrigger }) => {
   const [aboutData, setAboutData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -96,74 +97,39 @@ const AboutSection = ({ courseId, token }) => {
 const ModernCourseDetail = () => {
   const { courseId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const userId = localStorage.getItem('userId');
+
+  // State management
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState(null);
-  const [activeTab, setActiveTab] = useState('leaderboard');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState('curriculum'); // Always default to curriculum
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isFetchingProgress, setIsFetchingProgress] = useState(false);
-  const token = localStorage.getItem('token');
-  const userId = localStorage.getItem('userId');
-  const navigate = useNavigate();
-  
-  // Check if navbar should be shown and apply appropriate spacing
+
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log('>>> STATE CHANGE: isEnrolled =', isEnrolled);
+  }, [isEnrolled]);
+
+  useEffect(() => {
+    console.log('>>> STATE CHANGE: course =', course?.title || 'null');
+  }, [course]);
+
+  useEffect(() => {
+    console.log('>>> STATE CHANGE: activeTab =', activeTab);
+  }, [activeTab]);
+
+  // Check if navbar should be shown
   const showNavbar = shouldShowNavbar(location.pathname);
 
-  useEffect(() => {
-    const fetchCourseData = async () => {
-      try {
-        setLoading(true);
-        const courseResponse = await axios.get(`http://localhost:5000/api/courses/${courseId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setCourse(courseResponse.data);
-        
-        const enrolledResponse = await axios.get(`http://localhost:5000/api/courses/user/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const enrolled = (enrolledResponse.data?.courses || []).some(c => c._id === courseId || c.id === courseId);
-        setIsEnrolled(enrolled);
-        
-        if (enrolled && userId) {
-          await fetchProgressData();
-        }
-      } catch (error) {
-        console.error('Error fetching course data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCourseData();
-  }, [courseId, token, userId]);
-
-  // Listen for storage events to refresh progress when returning from lessons/tests
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'lessonCompleted' || e.key === 'testCompleted') {
-        fetchProgressData();
-        localStorage.removeItem(e.key); // Clean up the trigger
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also check on focus (when user returns to this tab)
-    const handleFocus = () => {
-      fetchProgressData();
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [courseId, userId, token]);
-
-  const fetchProgressData = async () => {
-    if (isFetchingProgress) {
-      console.log('Progress fetch already in progress, skipping...');
+  // Progress data fetching function
+  const fetchProgressData = useCallback(async () => {
+    if (!token || !userId || !courseId || isFetchingProgress) {
+      console.log('Skipping progress fetch - missing data or fetch in progress');
       return;
     }
     
@@ -172,71 +138,164 @@ const ModernCourseDetail = () => {
       console.log('Fetching progress data for userId:', userId, 'courseId:', courseId);
       
       // First fetch basic progress
-      const progressResponse = await axios.get(`http://localhost:5000/api/progress?userId=${userId}&courseId=${courseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const basicProgress = progressResponse.data || {};
-      console.log('Basic progress fetched successfully');
-      
-      // Try to fetch leaderboard stats, but don't let it fail the whole operation
-      let leaderboardStats = {};
+      let basicProgress = {};
       try {
-        const leaderboardStatsResponse = await axios.get(`http://localhost:5000/api/course-leaderboard/${courseId}/user/${userId}/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        leaderboardStats = leaderboardStatsResponse.data || {};
-        console.log('Leaderboard stats fetched successfully');
-      } catch (leaderboardError) {
-        console.warn('Failed to fetch leaderboard stats (this is expected for new users):', leaderboardError.response?.status, leaderboardError.response?.data?.message);
-        // Initialize default leaderboard stats for new users
-        leaderboardStats = {
-          overallScore: 0,
-          breakdown: {
-            lessonScore: 0,
-            moduleTestScore: 0,
-            finalExamScore: 0
-          },
-          progress: {
-            lessonsCompleted: 0,
-            moduleTestsCompleted: 0,
-            finalExamCompleted: false
-          },
-          rank: null,
-          percentile: 0
-        };
+        const progressResponse = await axios.get(
+          `http://localhost:5000/api/progress?userId=${userId}&courseId=${courseId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        basicProgress = progressResponse.data || {};
+      } catch (error) {
+        console.warn('Failed to fetch basic progress (expected for new users):', error.message);
       }
-      
-      // Merge progress data with leaderboard stats for comprehensive tracking
-      const enhancedProgress = {
-        ...basicProgress,
-        leaderboardStats,
-        lessonsCompleted: leaderboardStats.progress?.lessonsCompleted || 0,
-        moduleTestsCompleted: leaderboardStats.progress?.moduleTestsCompleted || 0,
-        finalExamCompleted: leaderboardStats.progress?.finalExamCompleted || false,
-        overallScore: leaderboardStats.overallScore || 0,
-        breakdown: leaderboardStats.breakdown || {}
-      };
-      
-      setProgress(enhancedProgress);
-      console.log('Progress data merged successfully');
-    } catch (error) {
-      console.error('Error fetching basic progress:', error);
-      // Set empty progress as fallback
+
+      // Then try to fetch module progress only if we have some basic progress
+      let moduleProgress = {};
+      if (basicProgress.modules?.length > 0) {
+        try {
+          const moduleProgressRes = await axios.get(
+            `http://localhost:5000/api/courses/${courseId}/modules/progress/${userId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          moduleProgress = moduleProgressRes.data || {};
+        } catch (error) {
+          console.warn('Failed to fetch module progress (expected for new users):', error.message);
+        }
+      } else {
+        console.log('No basic progress found, skipping module progress fetch');
+      }
+
       setProgress({
-        leaderboardStats: {
-          overallScore: 0,
-          breakdown: { lessonScore: 0, moduleTestScore: 0, finalExamScore: 0 },
-          progress: { lessonsCompleted: 0, moduleTestsCompleted: 0, finalExamCompleted: false }
+        ...basicProgress,
+        moduleProgress,
+        stats: basicProgress.stats || {
+          totalScore: 0,
+          completedLessons: 0,
+          completedModules: 0
         },
-        lessonsCompleted: 0,
-        moduleTestsCompleted: 0,
-        finalExamCompleted: false,
-        overallScore: 0,
-        breakdown: {}
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching progress data:', error);
+      setProgress({
+        stats: {
+          totalScore: 0,
+          completedLessons: 0,
+          completedModules: 0
+        },
+        moduleProgress: {},
+        lastUpdated: new Date().toISOString()
       });
     } finally {
       setIsFetchingProgress(false);
+    }
+  }, [courseId, userId, token]); // Removed isFetchingProgress to prevent infinite loop
+  useEffect(() => {
+    const fetchCourseData = async () => {
+      try {
+        setLoading(true);
+
+        console.log("=== ENROLLMENT CHECK START ===");
+        console.log("CourseId:", courseId);
+        console.log("UserId:", userId);
+
+        // 1️⃣ Fetch course details
+        const courseResponse = await axios.get(
+          `http://localhost:5000/api/courses/${courseId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        setCourse(courseResponse.data);
+        console.log("Course Loaded:", courseResponse.data.title);
+
+        // 2️⃣ Check enrollment USING ONLY /courses/user/:userId
+        if (token && userId) {
+          console.log("Checking enrollment using /courses/user/:userId");
+
+          const enrolledResponse = await axios.get(
+            `http://localhost:5000/api/courses/user/${userId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          const enrolledCourses = enrolledResponse.data?.courses || [];
+
+          console.log("User enrolled courses:", enrolledCourses);
+
+          const enrolled = enrolledCourses.some(
+            (c) => (c._id?.toString() || c._id) === courseId.toString()
+          );
+
+          console.log("Is enrolled?", enrolled);
+
+          setIsEnrolled(enrolled);
+
+          setActiveTab("curriculum");
+
+          if (enrolled) {
+            console.log("User enrolled → fetching progress");
+            await fetchProgressData();
+          } else {
+            console.log("User NOT enrolled → show enroll button");
+          }
+        } else {
+          console.log("User not logged in → default to not enrolled");
+          setIsEnrolled(false);
+          setActiveTab("curriculum");
+        }
+
+        console.log("=== ENROLLMENT CHECK COMPLETE ===");
+      } catch (error) {
+        console.error("Error fetching course data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourseData();
+  }, [courseId, token, userId]); // Removed fetchProgressData to prevent infinite loop
+
+
+  const handleEnroll = async () => {
+    try {
+      console.log("=== ENROLL CLICKED ===");
+      console.log("POST /courses/:id/enroll");
+
+      // 1️⃣ Enroll request
+      await axios.post(
+        `http://localhost:5000/api/courses/${courseId}/enroll`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log("Enrollment successful → verifying...");
+
+      // 2️⃣ Immediately verify using /courses/user/:userId
+      const verify = await axios.get(
+        `http://localhost:5000/api/courses/user/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const enrolledCourses = verify.data?.courses || [];
+
+      const isNowEnrolled = enrolledCourses.some(
+        (c) => (c._id?.toString() || c._id) === courseId.toString()
+      );
+
+      console.log("Verified enrollment:", isNowEnrolled);
+
+      setIsEnrolled(isNowEnrolled);
+
+      if (isNowEnrolled) {
+        await fetchProgressData();
+      }
+    } catch (error) {
+      console.error("Enrollment error:", error);
+
+      if (error.response?.status === 404) {
+        alert("❌ Enrollment API not found. Check backend route.");
+      } else {
+        alert("Enrollment failed.");
+      }
     }
   };
 
@@ -262,17 +321,6 @@ const ModernCourseDetail = () => {
       navigate(`/courses/${courseId}/topic/${topic?._id}/lesson/${lesson?._id}`);
     } catch (error) {
       console.error('Error starting lesson:', error);
-    }
-  };
-
-  const handleEnroll = async () => {
-    try {
-      await axios.post(`http://localhost:5000/api/courses/${courseId}/enroll`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setIsEnrolled(true);
-    } catch (error) {
-      console.error('Error enrolling in course:', error);
     }
   };
 
@@ -317,12 +365,10 @@ const ModernCourseDetail = () => {
     const topicsProgress = progress.topicsProgress || [];
     const leaderboardStats = progress.leaderboardStats || {};
     
-    // Calculate total course components
     let totalLessons = 0;
     let totalModuleTests = 0;
     let totalFinalExams = course.finalExam ? 1 : 0;
     
-    // Calculate completed components
     let completedLessons = 0;
     let completedModuleTests = 0;
     let completedFinalExams = 0;
@@ -333,7 +379,6 @@ const ModernCourseDetail = () => {
         (tp.topicId?.toString() || tp.topicId) === (topic._id?.toString() || topic._id)
       );
       
-      // Count lessons
       const lessonsInTopic = topic.lessons?.length || 0;
       totalLessons += lessonsInTopic;
       
@@ -342,7 +387,6 @@ const ModernCourseDetail = () => {
         completedLessons += completedLessonsInTopic;
       }
       
-      // Count module tests
       if (topic.moduleTest) {
         totalModuleTests++;
         if (topicProgress?.moduleTest?.completed) {
@@ -350,7 +394,6 @@ const ModernCourseDetail = () => {
         }
       }
       
-      // Check if entire topic is completed
       const allLessonsCompleted = lessonsInTopic === 0 || 
         (topicProgress?.lessons?.filter(l => l.completed).length === lessonsInTopic);
       const moduleTestCompleted = !topic.moduleTest || topicProgress?.moduleTest?.completed;
@@ -360,16 +403,12 @@ const ModernCourseDetail = () => {
       }
     });
     
-    // Check final exam completion from both progress and leaderboard stats
     if (progress.finalExamCompleted || leaderboardStats.progress?.finalExamCompleted) {
       completedFinalExams = 1;
     }
     
-    // Calculate total components and completed components
     const totalComponents = totalLessons + totalModuleTests + totalFinalExams;
     const completedComponents = completedLessons + completedModuleTests + completedFinalExams;
-    
-    // Calculate accurate percentage
     const percent = totalComponents > 0 ? Math.round((completedComponents / totalComponents) * 100) : 0;
     
     return { 
@@ -391,7 +430,7 @@ const ModernCourseDetail = () => {
     };
   };
   
-  const { percent: progressPercent, completed: completedTopics, total: totalTopics, details: progressDetails } = calculateCourseProgress();
+  const { percent: progressPercent, details: progressDetails } = calculateCourseProgress();
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty.toLowerCase()) {
@@ -416,28 +455,25 @@ const ModernCourseDetail = () => {
       {/* Hero Section */}
       <div className="hero-section">
         <div className="hero-background"></div>
-                 <div className="hero-content">
-           <div className="hero-header">
-                        <button onClick={() => navigate('/courses')} className="modern-back-btn">
-             <ArrowLeft size={24} />
-           </button>
-             
-             <div className="badge-container">
-               <span 
-                 className={`difficulty-pill ${course.difficulty.toLowerCase()}`}
-                 style={{ backgroundColor: getDifficultyColor(course.difficulty) }}
-               >
-                 {getDifficultyDisplay(course.difficulty)}
-               </span>
-             </div>
-           </div>
-           
-           <div className="course-hero">
-             <div className="course-info">
-              
+        <div className="hero-content">
+          <div className="hero-header">
+            <button onClick={() => navigate('/courses')} className="modern-back-btn">
+              <ArrowLeft size={24} />
+            </button>
+            <div className="badge-container">
+              <span 
+                className={`difficulty-pill ${course.difficulty.toLowerCase()}`}
+                style={{ backgroundColor: getDifficultyColor(course.difficulty) }}
+              >
+                {getDifficultyDisplay(course.difficulty)}
+              </span>
+            </div>
+          </div>
+          <div className="course-hero">
+            <div className="course-info">
               <h1 className="hero-title">{course.title}</h1>
               <p className="hero-description">{course.description}</p>
-              
+
               <div className="stats-row">
                 <div className="stat">
                   <Clock size={18} />
@@ -456,7 +492,7 @@ const ModernCourseDetail = () => {
                   <span>4.8 rating</span>
                 </div>
               </div>
-              
+
               {isEnrolled && (
                 <div className="progress-card">
                   <div className="progress-info">
@@ -464,8 +500,8 @@ const ModernCourseDetail = () => {
                     <span className="progress-value">{progressPercent}%</span>
                   </div>
                   <div className="modern-progress-bar">
-                    <div 
-                      className="modern-progress-fill" 
+                    <div
+                      className="modern-progress-fill"
                       style={{ width: `${progressPercent}%` }}
                     ></div>
                   </div>
@@ -477,7 +513,8 @@ const ModernCourseDetail = () => {
                 </div>
               )}
             </div>
-            
+
+            {/* Action Panel */}
             <div className="action-panel">
               {!isEnrolled ? (
                 <div className="enroll-card">
@@ -485,10 +522,12 @@ const ModernCourseDetail = () => {
                     <span className="price-label">Price</span>
                     <span className="price-value">Free</span>
                   </div>
+
                   <button onClick={handleEnroll} className="modern-enroll-btn">
                     <Play size={20} />
                     Enroll Now
                   </button>
+
                   <div className="features-list">
                     <div className="feature">
                       <CheckCircle size={16} />
@@ -505,24 +544,26 @@ const ModernCourseDetail = () => {
                   </div>
                 </div>
               ) : (
-                <div className="enrolled-card">
-                  <div className="enrolled-header">
-                    <CheckCircle size={24} color="#10b981" />
-                    <div>
-                      <h3>Enrolled</h3>
-                      <p>Continue your learning journey</p>
-                    </div>
+                <div className="enroll-card">
+                  <div className="price-display">
+                    <span className="price-label">Status</span>
+                    <span className="price-value enrolled-status">
+                      <CheckCircle size={20} color="#10b981" />
+                      Enrolled
+                    </span>
                   </div>
-                  <button 
+
+                  <button
                     onClick={() => {
                       if (progressPercent > 0) {
                         const firstIncompleteTopicIndex = (course.topics || []).findIndex((topic) => {
-                          const tProg = ((progress?.topicsProgress || [])).find(tp => 
-                            (tp.topicId?.toString?.() || tp.topicId) === (topic._id?.toString?.() || topic._id)
+                          const tProg = ((progress?.topicsProgress || [])).find(tp =>
+                            (tp.topicId?.toString?.() || tp.topicId) ===
+                            (topic._id?.toString?.() || topic._id)
                           );
                           return !tProg?.completed;
                         });
-                        
+
                         if (firstIncompleteTopicIndex !== -1) {
                           const topic = course.topics[firstIncompleteTopicIndex];
                           const firstLesson = (topic.lessons || [])[0];
@@ -535,12 +576,27 @@ const ModernCourseDetail = () => {
                       } else {
                         startTopic(0);
                       }
-                    }} 
-                    className="modern-continue-btn"
+                    }}
+                    className="modern-enroll-btn"
                   >
                     <Play size={20} />
-                    {progressPercent > 0 ? 'Continue Learning' : 'Start Course'}
+                    {progressPercent > 0 ? "Continue Course" : "Start Course"}
                   </button>
+
+                  <div className="features-list">
+                    <div className="feature">
+                      <CheckCircle size={16} />
+                      <span>Lifetime access</span>
+                    </div>
+                    <div className="feature">
+                      <CheckCircle size={16} />
+                      <span>Certificate included</span>
+                    </div>
+                    <div className="feature">
+                      <CheckCircle size={16} />
+                      <span>Interactive coding</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -548,54 +604,67 @@ const ModernCourseDetail = () => {
         </div>
       </div>
 
-             {/* Modern Navigation */}
-       <div className="modern-nav">
-         <div className="nav-container">
-           <div className="nav-tabs">
-             {isEnrolled && (
-               <button 
-                 className={`modern-tab ${activeTab === 'leaderboard' ? 'active' : ''}`}
-                 onClick={() => setActiveTab('leaderboard')}
-               >
-                 <Trophy size={18} />
-                 <span>Leaderboard</span>
-               </button>
-             )}
-             <button 
-               className={`modern-tab ${activeTab === 'curriculum' ? 'active' : ''}`}
-               onClick={() => setActiveTab('curriculum')}
-             >
-               <BookOpen size={18} />
-               <span>Curriculum</span>
-             </button>
-             <button 
-               className={`modern-tab ${activeTab === 'overview' ? 'active' : ''}`}
-               onClick={() => setActiveTab('overview')}
-             >
-               <FileText size={18} />
-               <span>About</span>
-             </button>
-           </div>
-         </div>
-       </div>
+      {/* Modern Navigation */}
+      <div className="modern-nav">
+        <div className="nav-container">
+          <div className="nav-tabs">
+            {isEnrolled && (
+              <button
+                className={`modern-tab ${
+                  activeTab === "leaderboard" ? "active" : ""
+                }`}
+                onClick={() => setActiveTab("leaderboard")}
+              >
+                <Trophy size={18} />
+                <span>Leaderboard</span>
+              </button>
+            )}
+
+            <button
+              className={`modern-tab ${
+                activeTab === "curriculum" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("curriculum")}
+            >
+              <BookOpen size={18} />
+              <span>Curriculum</span>
+            </button>
+
+            <button
+              className={`modern-tab ${
+                activeTab === "overview" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("overview")}
+            >
+              <FileText size={18} />
+              <span>About</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Content Area */}
       <div className="modern-content">
-        {activeTab === 'curriculum' && (
+        {activeTab === "curriculum" && (
           <div className="curriculum-section">
             <div className="curriculum-header">
               <div className="header-content">
                 <p className="section-title">Course Curriculum</p>
-                <p className="curriculum-subtitle">{course.modules?.length || 0} modules • {course.duration || '2-3 hours'} total</p>
+                <p className="curriculum-subtitle">
+                  {course.modules?.length || 0} modules • {course.duration}
+                </p>
               </div>
             </div>
-            
+
             <div className="modules-grid">
               {(course.modules || []).map((module, moduleIndex) => {
                 const isLocked = !isEnrolled;
-                
+
                 return (
-                  <div key={moduleIndex} className={`modern-module ${isLocked ? 'locked' : ''}`}>
+                  <div
+                    key={moduleIndex}
+                    className={`modern-module ${isLocked ? "locked" : ""}`}
+                  >
                     <div className="module-card">
                       <div className="module-header">
                         <div className="module-number">
@@ -605,13 +674,18 @@ const ModernCourseDetail = () => {
                             <span className="number">{moduleIndex + 1}</span>
                           )}
                         </div>
-                        
+
                         <div className="module-content">
                           <div className="module-title-row">
                             <h4 className="module-title">{module.title}</h4>
+
                             {!isLocked && (
-                              <button 
-                                onClick={() => navigate(`/courses/${courseId}/module/${module._id}/theory`)} 
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/courses/${courseId}/module/${module._id}/theory`
+                                  )
+                                }
                                 className="review-btn"
                               >
                                 Start
@@ -619,14 +693,24 @@ const ModernCourseDetail = () => {
                               </button>
                             )}
                           </div>
-                          <p className="module-description">{module.description}</p>
-                          
-                          {/* Module Content Types */}
+
+                          <p className="module-description">
+                            {module.description}
+                          </p>
+
+                          {/* Module Items */}
                           <div className="module-items">
-                            {/* Theory */}
-                            <div 
-                              className={`module-item ${isLocked ? 'locked' : ''}`}
-                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/theory`)}
+                            {/* THEORY */}
+                            <div
+                              className={`module-item ${
+                                isLocked ? "locked" : ""
+                              }`}
+                              onClick={() =>
+                                !isLocked &&
+                                navigate(
+                                  `/courses/${courseId}/module/${module._id}/theory`
+                                )
+                              }
                             >
                               <div className="item-status">
                                 {isLocked ? (
@@ -635,16 +719,26 @@ const ModernCourseDetail = () => {
                                   <div className="completion-circle"></div>
                                 )}
                               </div>
+
                               <div className="item-content">
                                 <span className="item-title">Theory</span>
-                                <span className="item-type">Content, PDF, PPT, DOC, WPS</span>
+                                <span className="item-type">
+                                  Content, PDF, PPT, DOC
+                                </span>
                               </div>
                             </div>
-                            
-                            {/* Snippets */}
-                            <div 
-                              className={`module-item ${isLocked ? 'locked' : ''}`}
-                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/snippets`)}
+
+                            {/* SNIPPETS */}
+                            <div
+                              className={`module-item ${
+                                isLocked ? "locked" : ""
+                              }`}
+                              onClick={() =>
+                                !isLocked &&
+                                navigate(
+                                  `/courses/${courseId}/module/${module._id}/snippets`
+                                )
+                              }
                             >
                               <div className="item-status">
                                 {isLocked ? (
@@ -653,16 +747,26 @@ const ModernCourseDetail = () => {
                                   <div className="completion-circle"></div>
                                 )}
                               </div>
+
                               <div className="item-content">
                                 <span className="item-title">Snippets</span>
-                                <span className="item-type">Syntax Examples</span>
+                                <span className="item-type">
+                                  Syntax Examples
+                                </span>
                               </div>
                             </div>
-                            
-                            {/* Lecture */}
-                            <div 
-                              className={`module-item ${isLocked ? 'locked' : ''}`}
-                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/lecture`)}
+
+                            {/* LECTURE */}
+                            <div
+                              className={`module-item ${
+                                isLocked ? "locked" : ""
+                              }`}
+                              onClick={() =>
+                                !isLocked &&
+                                navigate(
+                                  `/courses/${courseId}/module/${module._id}/lecture`
+                                )
+                              }
                             >
                               <div className="item-status">
                                 {isLocked ? (
@@ -672,15 +776,24 @@ const ModernCourseDetail = () => {
                                 )}
                               </div>
                               <div className="item-content">
-                                <span className="item-title">Lecture Content</span>
-                                <span className="item-type">Interactive Learning</span>
+                                <span className="item-title">Lecture</span>
+                                <span className="item-type">
+                                  Interactive Learning
+                                </span>
                               </div>
                             </div>
-                            
+
                             {/* MCQ */}
-                            <div 
-                              className={`module-item ${isLocked ? 'locked' : ''}`}
-                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/mcq`)}
+                            <div
+                              className={`module-item ${
+                                isLocked ? "locked" : ""
+                              }`}
+                              onClick={() =>
+                                !isLocked &&
+                                navigate(
+                                  `/courses/${courseId}/module/${module._id}/mcq`
+                                )
+                              }
                             >
                               <div className="item-status">
                                 {isLocked ? (
@@ -691,14 +804,23 @@ const ModernCourseDetail = () => {
                               </div>
                               <div className="item-content">
                                 <span className="item-title">MCQ</span>
-                                <span className="item-type">Practice Questions</span>
+                                <span className="item-type">
+                                  Practice Questions
+                                </span>
                               </div>
                             </div>
-                            
-                            {/* Code Challenges */}
-                            <div 
-                              className={`module-item ${isLocked ? 'locked' : ''}`}
-                              onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/challenges`)}
+
+                            {/* CODE CHALLENGES */}
+                            <div
+                              className={`module-item ${
+                                isLocked ? "locked" : ""
+                              }`}
+                              onClick={() =>
+                                !isLocked &&
+                                navigate(
+                                  `/courses/${courseId}/module/${module._id}/challenges`
+                                )
+                              }
                             >
                               <div className="item-status">
                                 {isLocked ? (
@@ -708,43 +830,57 @@ const ModernCourseDetail = () => {
                                 )}
                               </div>
                               <div className="item-content">
-                                <span className="item-title">Code Challenges</span>
-                                <span className="item-type">Coding Practice</span>
+                                <span className="item-title">
+                                  Code Challenges
+                                </span>
+                                <span className="item-type">
+                                  Coding Practice
+                                </span>
                               </div>
                             </div>
-                            
-                            {/* Knowledge Assessment */}
-                            {module.moduleTest && (module.moduleTest.mcqs?.length > 0 || module.moduleTest.codeChallenges?.length > 0) && (
-                              <div 
-                                className={`module-item test-item ${isLocked ? 'locked' : ''}`}
-                                onClick={() => !isLocked && navigate(`/courses/${courseId}/module/${module._id}/test`)}
-                              >
-                                <div className="item-status">
-                                  {isLocked ? (
-                                    <Lock size={16} />
-                                  ) : (
-                                    <div className="item-icon test">
-                                      <Award size={16} />
-                                    </div>
-                                  )}
+
+                            {/* MODULE TEST */}
+                            {module.moduleTest &&
+                              (module.moduleTest.mcqs?.length > 0 ||
+                                module.moduleTest.codeChallenges?.length > 0) && (
+                                <div
+                                  className={`module-item test-item ${
+                                    isLocked ? "locked" : ""
+                                  }`}
+                                  onClick={() =>
+                                    !isLocked &&
+                                    navigate(
+                                      `/courses/${courseId}/module/${module._id}/test`
+                                    )
+                                  }
+                                >
+                                  <div className="item-status">
+                                    {isLocked ? (
+                                      <Lock size={16} />
+                                    ) : (
+                                      <div className="item-icon test">
+                                        <Award size={16} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="item-content">
+                                    <span className="item-title">
+                                      Knowledge Assessment: {module.title}
+                                    </span>
+                                    <span className="item-type">Assessment</span>
+                                  </div>
                                 </div>
-                                <div className="item-content">
-                                  <span className="item-title">Knowledge Assessment: {module.title}</span>
-                                  <span className="item-type">Assessment</span>
-                                </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         </div>
-                        
                       </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            
-            {/* Final Exam Section */}
+
+            {/* Final Exam */}
             {course.finalExam && course.finalExam.isActive && (
               <div className="final-exam-section">
                 <div className="final-exam-header">
@@ -753,36 +889,47 @@ const ModernCourseDetail = () => {
                   </div>
                   <div className="exam-info">
                     <h3 className="exam-title">{course.finalExam.title}</h3>
-                    <p className="exam-description">{course.finalExam.description}</p>
+                    <p className="exam-description">
+                      {course.finalExam.description}
+                    </p>
                   </div>
                 </div>
-                
+
                 <div className="exam-stats">
                   <div className="exam-stat">
                     <Brain size={20} />
-                    <span>{course.finalExam.mcqs?.length || 0} MCQs + {course.finalExam.codeChallenges?.length || 0} Coding</span>
+                    <span>
+                      {course.finalExam.mcqs?.length || 0} MCQs +{" "}
+                      {course.finalExam.codeChallenges?.length || 0} Coding
+                    </span>
                   </div>
+
                   <div className="exam-stat">
                     <Timer size={20} />
                     <span>{course.finalExam.duration} minutes</span>
                   </div>
+
                   <div className="exam-stat">
                     <Trophy size={20} />
                     <span>{course.finalExam.totalMarks} marks</span>
                   </div>
+
                   <div className="exam-stat">
                     <Target size={20} />
                     <span>{course.finalExam.passingScore}% to pass</span>
                   </div>
                 </div>
-                
+
                 {course.finalExam.securitySettings?.isSecure && (
                   <div className="security-notice">
                     <AlertTriangle size={16} />
-                    <span>Secure Assessment - Full screen required, copy-paste disabled</span>
+                    <span>
+                      Secure Assessment - Full screen required, copy-paste
+                      disabled
+                    </span>
                   </div>
                 )}
-                
+
                 <div className="exam-actions">
                   {!isEnrolled ? (
                     <button className="exam-btn locked" disabled>
@@ -790,9 +937,11 @@ const ModernCourseDetail = () => {
                       Enroll to Access Final Exam
                     </button>
                   ) : (
-                    <button 
+                    <button
                       className="exam-btn available"
-                      onClick={() => navigate(`/courses/${courseId}/final-exam`)}
+                      onClick={() =>
+                        navigate(`/courses/${courseId}/final-exam`)
+                      }
                     >
                       <Shield size={18} />
                       Take Final Exam
@@ -803,17 +952,24 @@ const ModernCourseDetail = () => {
             )}
           </div>
         )}
-        
-        {activeTab === 'overview' && (
-          <AboutSection courseId={courseId} token={token} />
+
+        {/* ABOUT */}
+        {activeTab === "overview" && (
+          <AboutSection
+            courseId={courseId}
+            userId={userId}
+            token={token}
+            refreshTrigger={refreshTrigger}
+          />
         )}
-        
-        {activeTab === 'leaderboard' && isEnrolled && (
-          <CourseLeaderboard 
-            courseId={courseId} 
-            userId={userId} 
-            token={token} 
-            refreshTrigger={Date.now()} 
+
+        {/* LEADERBOARD */}
+        {activeTab === "leaderboard" && isEnrolled && (
+          <CourseLeaderboard
+            courseId={courseId}
+            userId={userId}
+            token={token}
+            refreshTrigger={Date.now()}
           />
         )}
       </div>
@@ -822,3 +978,4 @@ const ModernCourseDetail = () => {
 };
 
 export default ModernCourseDetail;
+

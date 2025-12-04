@@ -1,18 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
+
 const UserProgress = require("../models/UserProgress");
 const Course = require("../models/Course");
 const UserStreak = require("../models/UserStreak");
 const { authenticateToken } = require("../middleware/authMiddleware");
 const { updateUserCourseScore } = require("../controllers/courseLeaderboardController");
 
-// @route   GET /api/progress?userId=&courseId=
-// @desc    Get user progress for a course
+/* ===========================================================
+   ⭐ 1. GET USER PROGRESS FOR A COURSE
+   =========================================================== */
 router.get("/", authenticateToken, async (req, res) => {
-  const { userId, courseId } = req.query;
-
   try {
+    const { userId, courseId } = req.query;
+
     if (!userId || !courseId) {
       return res.status(400).json({ message: "userId and courseId are required." });
     }
@@ -20,537 +22,277 @@ router.get("/", authenticateToken, async (req, res) => {
     let progress = await UserProgress.findOne({ userId, courseId });
 
     if (!progress) {
-      // Create initial progress if doesn't exist
       const course = await Course.findById(courseId);
-      if (!course) {
-        return res.status(404).json({ message: "Course not found." });
-      }
+      if (!course) return res.status(404).json({ message: "Course not found" });
 
       progress = new UserProgress({
         userId,
         courseId,
-        topicsProgress: [],
+        modulesProgress: [],
         overallProgress: 0
       });
+
       await progress.save();
     }
 
     res.json(progress);
   } catch (err) {
-    console.error('Error fetching progress:', err);
+    console.error("❌ Error fetching progress:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
-// @route   POST /api/progress/lesson
-// @desc    Update lesson progress
-router.post("/lesson", 
+/* ===========================================================
+   ⭐ 2. UPDATE LECTURE PROGRESS  (MCQ IGNORE IN STATS)
+   =========================================================== */
+router.post(
+  "/lecture",
   authenticateToken,
   [
-    body("userId").notEmpty().withMessage("userId is required"),
-    body("courseId").notEmpty().withMessage("courseId is required"),
-    body("topicId").notEmpty().withMessage("topicId is required"),
-    body("lessonId").notEmpty().withMessage("lessonId is required"),
-    body("completed").optional().isBoolean(),
-    body("timeSpent").optional().isNumeric(),
-    body("score").optional().isNumeric()
+    body("userId").notEmpty(),
+    body("courseId").notEmpty(),
+    body("moduleId").notEmpty(),
+    body("lectureId").notEmpty(),
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { userId, courseId, topicId, lessonId, completed, timeSpent, score, topicTitle } = req.body;
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+      const {
+        userId,
+        courseId,
+        moduleId,
+        lectureId,
+        completed,
+        timeSpent,
+        mcqScore,
+        codingScore,
+        totalScore,
+        moduleTitle,
+        topic
+      } = req.body;
+
       let progress = await UserProgress.findOne({ userId, courseId });
 
       if (!progress) {
         progress = new UserProgress({
           userId,
           courseId,
-          topicsProgress: [],
-          overallProgress: 0
+          modulesProgress: [],
         });
       }
 
-      // Check if this lesson is already marked as completed
-      const existingTopic = progress.topicsProgress.find(tp => tp.topicId.toString() === topicId);
-      const existingLesson = existingTopic?.lessons?.find(lp => lp.lessonId.toString() === lessonId);
-      
-      if (existingLesson?.completed) {
-        return res.status(200).json({ 
-          message: "Lesson already completed",
-          alreadyCompleted: true,
-          progress: progress 
-        });
-      }
-
-      await progress.updateLessonProgress(topicId, lessonId, {
+      await progress.updateLectureProgress(moduleId, lectureId, {
         completed: completed || false,
         timeSpent: timeSpent || 0,
-        score: score || 0,
-        topicTitle: topicTitle || 'Unknown Topic'
+        mcqScore: mcqScore || 0,
+        codingScore: codingScore || 0,
+        totalScore: totalScore || 0,
+        moduleTitle: moduleTitle || "Unknown Module",
+        topic: topic || "Unknown Topic"
       });
 
-      // Update leaderboard score if lesson is completed
-      if (completed) {
-        try {
-          const assessmentData = {
-            topicId: topicId,
-            lessonId: lessonId,
-            mcqResults: mcqResults || [],
-            codingResults: codingResults || []
-          };
-          const mockReq = { 
-            params: { courseId }, 
-            body: { 
-              userId, 
-              assessmentType: 'lesson', 
-              score: score || 0,
-              assessmentData: assessmentData
-            } 
-          };
-          const mockRes = { json: () => {}, status: () => ({ json: () => {} }) };
-          await updateUserCourseScore(mockReq, mockRes);
-        } catch (leaderboardErr) {
-          console.error('Error updating leaderboard:', leaderboardErr);
-          // Don't fail the main request if leaderboard update fails
-        }
-      }
-
-      // Record activity for streak tracking
+      // RECORD STREAK
       try {
-        await UserStreak.recordActivity(userId, 'lesson_completion', {
-          courseId: courseId,
-          topicId: topicId,
-          lessonId: lessonId,
-          score: score || 0,
-          timeSpent: timeSpent || 0
+        await UserStreak.recordActivity(userId, "lecture_completion", {
+          courseId,
+          moduleId,
+          lectureId,
         });
-      } catch (streakError) {
-        console.error('Error recording streak activity:', streakError);
-        // Don't fail the main request if streak tracking fails
+      } catch (err) {
+        console.error("❌ Streak update failed:", err);
       }
 
-      res.json({ 
-        message: "Lesson progress updated successfully", 
-        alreadyCompleted: false,
-        progress: progress 
-      });
+      res.json({ message: "Lecture progress updated", progress });
     } catch (err) {
-      console.error('Error updating lesson progress:', err);
+      console.error("❌ Error updating lecture:", err);
       res.status(500).json({ message: "Server error", error: err.message });
     }
   }
 );
 
-// @route   POST /api/progress/module-test
-// @desc    Submit module test results
-router.post("/module-test", 
+/* ===========================================================
+   ⭐ 3. SUBMIT MODULE TEST (MCQ + CODING)
+   - Only MCQ is counted for global MCQ STATS
+   =========================================================== */
+router.post(
+  "/module-test",
   authenticateToken,
   [
-    body("userId").notEmpty().withMessage("userId is required"),
-    body("courseId").notEmpty().withMessage("courseId is required"),
-    body("topicId").notEmpty().withMessage("topicId is required"),
-    body("answers").optional().isArray().withMessage("answers must be an array")
+    body("userId").notEmpty(),
+    body("courseId").notEmpty(),
+    body("moduleId").notEmpty()
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { userId, courseId, topicId, answers, codingAnswers, topicTitle } = req.body;
-
     try {
-      // Get course data to access correct answers
+      const {
+        userId,
+        courseId,
+        moduleId,
+        answers,
+        codingAnswers,
+        moduleTitle
+      } = req.body;
+
       const course = await Course.findById(courseId);
-      if (!course) {
-        return res.status(404).json({ message: "Course not found" });
-      }
+      if (!course) return res.status(404).json({ message: "Course not found" });
 
-      const topic = course.topics.id(topicId);
-      if (!topic) {
-        return res.status(404).json({ message: "Topic not found" });
-      }
+      const module = course.modules.id(moduleId);
+      if (!module) return res.status(404).json({ message: "Module not found" });
 
-      if (!topic.moduleTest) {
-        return res.status(404).json({ message: "No test available for this topic" });
-      }
+      const mcqs = module.moduleTest?.mcqs || [];
+      const codeChallenges = module.moduleTest?.codeChallenges || [];
 
-      // Get MCQs and coding challenges from topic
-      const mcqs = topic.moduleTest.mcqs || [];
-      const codeChallenges = topic.moduleTest.codeChallenges || [];
-      const totalQuestions = mcqs.length + codeChallenges.length;
-
-      // Enhanced score calculation with detailed analysis
-      let correctAnswers = 0;
-      let wrongAnswers = 0;
-      let unattempted = 0;
+      /* -----------------------------
+         ⭐ MCQ processing
+      ----------------------------- */
       let mcqCorrect = 0;
-      let codingCorrect = 0;
       let mcqScore = 0;
-      let codingScore = 0;
-      let mcqAttempted = 0;
-      let codingAttempted = 0;
-      
-      // Detailed MCQ analysis
-      const mcqResults = [];
+      let mcqResults = [];
+
       mcqs.forEach((mcq, index) => {
-        const userAnswer = answers && answers[index];
-        const isAnswered = userAnswer !== undefined && userAnswer !== null;
-        const isCorrect = isAnswered && userAnswer === mcq.correct;
-        
+        const userAnswer = answers?.[index];
+        const isCorrect = userAnswer === mcq.correct;
+
         mcqResults.push({
           questionIndex: index,
-          userAnswer: userAnswer,
-          correctAnswer: mcq.correct,
-          isCorrect: isCorrect,
-          isAttempted: isAnswered,
-          marks: mcq.marks || 1,
-          earnedMarks: isCorrect ? (mcq.marks || 1) : 0
+          selectedAnswer: userAnswer,
+          isCorrect
         });
-        
-        if (isAnswered) {
-          mcqAttempted++;
-          if (isCorrect) {
-            correctAnswers++;
-            mcqCorrect++;
-            mcqScore += mcq.marks || 1;
-          } else {
-            wrongAnswers++;
-          }
-        } else {
-          unattempted++;
+
+        if (isCorrect) {
+          mcqCorrect++;
+          mcqScore += mcq.marks || 1;
         }
       });
-      
-      // Detailed coding analysis
+
+      /* -----------------------------
+         ⭐ Coding processing
+      ----------------------------- */
       const codingResults = [];
-      codeChallenges.forEach((challenge, index) => {
-        const questionIndex = index + mcqs.length;
-        const userCode = codingAnswers && codingAnswers[questionIndex];
-        const hasCode = userCode && userCode.code && userCode.code.trim();
-        
-        // Enhanced coding evaluation (for now, just check if code exists)
-        // TODO: Implement actual code execution and testing
-        const isCorrect = hasCode; // Simplified for now
-        
-        codingResults.push({
-          questionIndex: index,
-          userCode: userCode ? userCode.code : null,
-          language: userCode ? userCode.language : null,
-          isCorrect: isCorrect,
-          isAttempted: hasCode,
-          marks: challenge.marks || 2,
-          earnedMarks: isCorrect ? (challenge.marks || 2) : 0
-        });
-        
-        if (hasCode) {
-          codingAttempted++;
-          if (isCorrect) {
-            correctAnswers++;
-            codingCorrect++;
-            codingScore += challenge.marks || 2;
-          } else {
-            wrongAnswers++;
-          }
-        } else {
-          unattempted++;
-        }
-      });
-
-      // Calculate comprehensive scoring
-      const totalMcqMarks = mcqs.reduce((sum, mcq) => sum + (mcq.marks || 1), 0);
-      const totalCodingMarks = codeChallenges.reduce((sum, challenge) => sum + (challenge.marks || 2), 0);
-      const totalMarks = totalMcqMarks + totalCodingMarks;
-      const totalScore = mcqScore + codingScore;
-      const percentage = totalMarks > 0 ? Math.round((totalScore / totalMarks) * 100) : 0;
+      let codingScore = 0;
       
-      // Performance metrics
-      const mcqPercentage = totalMcqMarks > 0 ? Math.round((mcqScore / totalMcqMarks) * 100) : 0;
-      const codingPercentage = totalCodingMarks > 0 ? Math.round((codingScore / totalCodingMarks) * 100) : 0;
-      const attemptRate = totalQuestions > 0 ? Math.round(((mcqAttempted + codingAttempted) / totalQuestions) * 100) : 0;
-
-      let progress = await UserProgress.findOne({ userId, courseId });
-
-      if (!progress) {
-        progress = new UserProgress({
-          userId,
-          courseId,
-          topicsProgress: [],
-          overallProgress: 0
+      if (codingAnswers && typeof codingAnswers === 'object') {
+        // Handle codingAnswers as object (frontend sends it this way)
+        Object.entries(codingAnswers).forEach(([questionIndex, answerData]) => {
+          const index = parseInt(questionIndex);
+          const challenge = codeChallenges[index];
+          const hasValidCode = answerData?.code && answerData.code.trim().length > 0;
+          const score = hasValidCode ? (challenge?.marks || 2) : 0;
+          
+          codingResults.push({
+            challengeIndex: index,
+            verdict: hasValidCode ? "Accepted" : "Wrong Answer",
+            score: score
+          });
+          
+          codingScore += score;
         });
       }
 
-      // Enhanced progress data
-      const moduleTestData = {
-        score: totalScore,
-        totalMarks,
+      const totalScore = mcqScore + codingScore;
+
+      /* -----------------------------
+         ⭐ Save to UserProgress
+      ----------------------------- */
+      let progress = await UserProgress.findOne({ userId, courseId });
+      if (!progress) {
+        progress = new UserProgress({ userId, courseId, modulesProgress: [] });
+      }
+
+      await progress.updateModuleTestProgress(moduleId, {
         mcqScore,
         codingScore,
-        totalMcqMarks,
-        totalCodingMarks,
-        correctAnswers,
-        wrongAnswers,
-        unattempted,
-        mcqCorrect,
-        codingCorrect,
-        mcqAttempted,
-        codingAttempted,
-        percentage,
-        mcqPercentage,
-        codingPercentage,
-        attemptRate,
-        answers: answers || [],
-        codingAnswers: codingAnswers || {},
-        mcqResults,
+        totalScore,
+        mcqAnswers: mcqResults,
         codingResults,
-        topicTitle: topicTitle || topic.title || 'Unknown Topic',
-        completedAt: new Date(),
-        timeTaken: req.body.timeTaken || 0
-      };
+        moduleTitle: moduleTitle || module.title
+      });
 
-      await progress.updateModuleTestProgress(topicId, moduleTestData);
-
-      // Update leaderboard score for module test completion
+      /* -----------------------------
+         ⭐ Leaderboard update
+      ----------------------------- */
       try {
-        // Prepare MCQ results
-        const mcqResults = mcqs.map((mcq, index) => ({
-          isCorrect: answers[index] !== undefined && answers[index] === mcq.correct
-        }));
-        
-        // Prepare coding results
-        const codingResults = codeChallenges.map((challenge, index) => {
-          const codingIndex = index + mcqs.length;
-          const hasCode = codingAnswers && codingAnswers[codingIndex] && codingAnswers[codingIndex].code && codingAnswers[codingIndex].code.trim();
-          return {
-            verdict: hasCode ? 'Accepted' : 'Wrong Answer'
-          };
-        });
-        
-        const assessmentData = {
-          topicId: topicId,
-          mcqResults: mcqResults,
-          codingResults: codingResults,
-          mcqQuestions: mcqs,
-          codingQuestions: codeChallenges
+        const mockReq = {
+          params: { courseId },
+          body: {
+            userId,
+            assessmentType: "moduleTest",
+            assessmentData: { 
+              topicId: moduleId, // Add moduleId as topicId for leaderboard compatibility
+              mcqResults, 
+              codingResults 
+            },
+          },
         };
-        
-        console.log('Updating leaderboard with assessment data:', JSON.stringify(assessmentData, null, 2));
-        
-        const mockReq = { 
-          params: { courseId }, 
-          body: { 
-            userId, 
-            assessmentType: 'moduleTest', 
-            assessmentData: assessmentData
-          } 
-        };
-        const mockRes = { 
-          json: (data) => {
-            console.log('✅ Leaderboard update SUCCESS for moduleTest:', {
-              userId,
-              courseId,
-              topicId,
-              newScore: data.newScore,
-              breakdown: data.breakdown
-            });
-          }, 
-          status: (code) => ({ 
-            json: (error) => {
-              console.error('❌ Leaderboard update ERROR for moduleTest:', {
-                userId,
-                courseId,
-                topicId,
-                statusCode: code,
-                error: error
-              });
-            }
-          }) 
-        };
-        
-        console.log('🔄 Calling updateUserCourseScore for moduleTest...');
+        const mockRes = { json: () => {}, status: () => ({ json: () => {} }) };
         await updateUserCourseScore(mockReq, mockRes);
-        console.log('✅ updateUserCourseScore call completed for moduleTest');
-      } catch (leaderboardErr) {
-        console.error('Error updating leaderboard:', leaderboardErr);
-        // Don't fail the main request if leaderboard update fails
+      } catch (err) {
+        console.error("❌ Leaderboard update failed:", err);
       }
 
-      // Record activity for streak tracking
-      try {
-        await UserStreak.recordActivity(userId, 'module_test_attempt', {
-          courseId: courseId,
-          topicId: topicId,
-          score: totalScore,
-          totalMarks: totalMarks,
-          percentage: percentage
-        });
-      } catch (streakError) {
-        console.error('Error recording streak activity:', streakError);
-        // Don't fail the main request if streak tracking fails
-      }
+      // Calculate additional metrics for frontend
+      const totalQuestions = mcqs.length + codeChallenges.length;
+      const answeredQuestions = mcqCorrect + (codingResults.length);
+      const wrongAnswers = (answers?.filter(a => a !== undefined && a !== null).length || 0) - mcqCorrect;
+      const totalMarks = mcqs.reduce((sum, mcq) => sum + (mcq.marks || 1), 0) + 
+                        codeChallenges.reduce((sum, challenge) => sum + (challenge.marks || 2), 0);
+      const percentage = totalMarks > 0 ? Math.round((totalScore / totalMarks) * 100) : 0;
 
-      res.json({ 
-        message: "Module test submitted successfully", 
-        progress: progress,
+      res.json({
+        message: "Module Test Submitted",
         testResult: {
-          // Basic scores
           totalScore,
           totalMarks,
           percentage,
-          
-          // Question counts
-          totalQuestions,
-          correctAnswers,
+          correctAnswers: mcqCorrect,
           wrongAnswers,
-          unattempted,
-          
-          // MCQ specific
+          unattempted: totalQuestions - answeredQuestions,
+          totalQuestions,
           mcqScore,
-          totalMcqMarks,
-          mcqCorrect,
-          mcqAttempted,
-          mcqPercentage,
-          
-          // Coding specific
           codingScore,
-          totalCodingMarks,
-          codingCorrect,
-          codingAttempted,
-          codingPercentage,
-          
-          // Performance metrics
-          attemptRate,
-          timeTaken: req.body.timeTaken || 0,
-          completedAt: new Date(),
-          
-          // Detailed results
-          mcqResults,
-          codingResults,
-          
-          // Topic info
-          topicId,
-          topicTitle: topicTitle || topic.title || 'Unknown Topic'
+          totalMcqMarks: mcqs.reduce((sum, mcq) => sum + (mcq.marks || 1), 0),
+          totalCodingMarks: codeChallenges.reduce((sum, challenge) => sum + (challenge.marks || 2), 0),
+          mcqCorrect,
+          codingCorrect: codingResults.filter(r => r.verdict === "Accepted").length,
+          codingIncorrect: codingResults.filter(r => r.verdict !== "Accepted").length,
+          timeTaken: req.body.timeTaken || 0
+        },
+        scores: {
+          mcqScore,
+          codingScore,
+          totalScore,
+          correctMCQs: mcqCorrect,
+          totalMCQs: mcqs.length
         }
       });
     } catch (err) {
-      console.error('Error submitting module test:', err);
+      console.error("❌ Error submitting module test:", err);
       res.status(500).json({ message: "Server error", error: err.message });
     }
   }
 );
 
-// @route   POST /api/progress (Legacy support)
-// @desc    Update progress (backward compatibility)
-router.post("/", authenticateToken, async (req, res) => {
-  const { userId, courseId, moduleIndex, testAttempt } = req.body;
-
-  try {
-    if (!userId || !courseId) {
-      return res.status(400).json({ message: "userId and courseId are required." });
-    }
-
-    let progress = await UserProgress.findOne({ userId, courseId });
-
-    if (!progress) {
-      progress = new UserProgress({
-        userId,
-        courseId,
-        completedModules: [],
-        topicsProgress: [],
-        testAttempt: testAttempt || {},
-      });
-    }
-
-    // Add completed module if it's not already completed (backward compatibility)
-    if (typeof moduleIndex === "number" && !progress.completedModules.includes(moduleIndex)) {
-      progress.completedModules.push(moduleIndex);
-    }
-
-    // Update testAttempt if provided (backward compatibility)
-    if (testAttempt) {
-      progress.testAttempt = {
-        score: testAttempt.score || progress.testAttempt?.score || 0,
-        totalMarks: testAttempt.total || testAttempt.totalMarks || progress.testAttempt?.totalMarks || 0,
-        percentage: 0,
-        attemptedAt: new Date(),
-        answers: testAttempt.answers || []
-      };
-      
-      // Calculate percentage
-      if (progress.testAttempt.totalMarks > 0) {
-        progress.testAttempt.percentage = Math.round((progress.testAttempt.score / progress.testAttempt.totalMarks) * 100);
-      }
-    }
-
-    await progress.save();
-    res.json(progress);
-  } catch (err) {
-    console.error('Error updating progress:', err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
-
-// @route   GET /api/progress/topic/:topicId
-// @desc    Get specific topic progress
-router.get("/topic/:topicId", authenticateToken, async (req, res) => {
-  const { userId, courseId } = req.query;
-  const { topicId } = req.params;
-
-  try {
-    if (!userId || !courseId) {
-      return res.status(400).json({ message: "userId and courseId are required." });
-    }
-
-    const progress = await UserProgress.findOne({ userId, courseId });
-    
-    if (!progress) {
-      return res.status(404).json({ message: "No progress found." });
-    }
-
-    const topicProgress = progress.topicsProgress.find(tp => tp.topicId === topicId);
-    
-    if (!topicProgress) {
-      return res.status(404).json({ message: "Topic progress not found." });
-    }
-
-    res.json(topicProgress);
-  } catch (err) {
-    console.error('Error fetching topic progress:', err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
-
-// @route   DELETE /api/progress/reset
-// @desc    Reset user progress for a course
-router.delete("/reset", 
+/* ===========================================================
+   ⭐ 4. RESET PROGRESS
+   =========================================================== */
+router.delete(
+  "/reset",
   authenticateToken,
-  [
-    body("userId").notEmpty().withMessage("userId is required"),
-    body("courseId").notEmpty().withMessage("courseId is required")
-  ],
+  [body("userId").notEmpty(), body("courseId").notEmpty()],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { userId, courseId } = req.body;
-
     try {
-      const result = await UserProgress.findOneAndDelete({ userId, courseId });
-      
-      if (!result) {
+      const { userId, courseId } = req.body;
+
+      const deleted = await UserProgress.findOneAndDelete({ userId, courseId });
+
+      if (!deleted)
         return res.status(404).json({ message: "No progress found to reset." });
-      }
 
       res.json({ message: "Progress reset successfully" });
     } catch (err) {
-      console.error('Error resetting progress:', err);
+      console.error("❌ Error resetting progress:", err);
       res.status(500).json({ message: "Server error", error: err.message });
     }
   }

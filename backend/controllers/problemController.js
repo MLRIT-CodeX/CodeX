@@ -200,29 +200,7 @@ const getProblemStats = async (req, res) => {
     const maxPracticeScore = practiceProblems.reduce((sum, p) => sum + (p.score || 0), 0);
     const maxCourseScore = courseProblems.reduce((sum, p) => sum + (p.score || 0), 0);
 
-    // Return organized stats
-    res.json({
-      practiceProblems: {
-        easy: easyProblems,
-        medium: mediumProblems,
-        hard: hardProblems,
-        total: practiceProblems.length
-      },
-      courseProblems: {
-        easy: easyCourseProblems,
-        medium: mediumCourseProblems,
-        hard: hardCourseProblems,
-        total: courseProblems.length
-      },
-      solvedPractice,
-      solvedCourse,
-      scores: {
-        maxPracticeScore,
-        maxCourseScore,
-        totalMaxScore: maxPracticeScore + maxCourseScore
-      }
-    });
-
+    // Return organized stats (fixed to send only one response)
     res.status(200).json({
       // Practice problem stats
       easy: { solved: solvedPractice.easy, total: easyProblems.length, color: 'color-easy' },
@@ -240,6 +218,27 @@ const getProblemStats = async (req, res) => {
         totalSolved: solvedCourse.easy + solvedCourse.medium + solvedCourse.hard,
         totalAvailable: courseProblems.length,
         maxPossibleScore: maxCourseScore
+      },
+
+      // Additional organized data for other endpoints
+      practiceProblems: {
+        easy: easyProblems.length,
+        medium: mediumProblems.length,
+        hard: hardProblems.length,
+        total: practiceProblems.length
+      },
+      courseProblems: {
+        easy: easyCourseProblems.length,
+        medium: mediumCourseProblems.length,
+        hard: hardCourseProblems.length,
+        total: courseProblems.length
+      },
+      solvedPractice,
+      solvedCourse,
+      scores: {
+        maxPracticeScore,
+        maxCourseScore,
+        totalMaxScore: maxPracticeScore + maxCourseScore
       }
     });
   } catch (error) {

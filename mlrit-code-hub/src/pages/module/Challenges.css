@@ -3,18 +3,464 @@
  ************************************/
  .challenges-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  background: #0e1117; /* deep code editor vibe */
+  background: #0e1117;
   color: #e8ecf3;
   font-family: 'Inter', sans-serif;
 }
 
-.challenges-main {
+
+
+.challenges-test-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-bottom: 2px solid #333;
+  padding: 0.75rem 1.5rem;
+  height: 60px;
+  color: #e2e8f0;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.challenge-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #a855f7;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.navbar-center {
+  flex: 2;
+  text-align: center;
+}
+
+.test-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.navbar-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 1;
+}
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-control:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.nav-control:disabled {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #4b5563;
+  cursor: not-allowed;
+}
+
+.nav-divider {
+  color: #4b5563;
+  font-weight: bold;
+  margin: 0 0.25rem;
+}
+
+/* ================================
+   Full Space Layout
+=============================== */
+.challenges-test-main {
   flex: 1;
   display: flex;
+  background: #0d1117;
+  height: calc(100vh - 140px);
+}
+
+.coding-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: #0d1117;
+}
+
+.coding-left {
+  background: #161b22;
+  border-right: 1px solid #30363d;
+  overflow: hidden;
+  display: flex;
   flex-direction: column;
-  padding: 1.5rem 2rem;
+}
+
+.problem-statement {
+  padding: 1rem;
+  height: 100%;
   overflow-y: auto;
+}
+
+.problem-statement h2 {
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.challenge-meta {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.difficulty-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.difficulty-easy {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.difficulty-medium {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.difficulty-hard {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.marks-badge, .time-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.problem-description {
+  color: #e2e8f0;
+  line-height: 1.6;
+}
+
+.problem-description p {
+  margin-bottom: 1rem;
+}
+
+.hint-section {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.hint-section h3 {
+  color: #a855f7;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.sample-cases {
+  margin-top: 1.5rem;
+}
+
+.sample-cases h3 {
+  color: #ffffff;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.testcase-block {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.testcase-block strong {
+  color: #3b82f6;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.testcase-block pre {
+  background: #010409;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 0.75rem;
+  color: #e6edf3;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  margin: 0.5rem 0 1rem 0;
+  overflow-x: auto;
+}
+
+/* ================================
+   Resizer
+=============================== */
+.resizer {
+  width: 4px;
+  background: #30363d;
+  cursor: col-resize;
+  transition: background 0.2s ease;
+}
+
+.resizer:hover {
+  background: #3b82f6;
+}
+
+/* ================================
+   Right Panel - Code Editor
+=============================== */
+.coding-right {
+  display: flex;
+  flex-direction: column;
+  background: #0d1117;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  padding: 0.75rem 1rem;
+}
+
+.toolbar-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.hint-button, .reset-button, .run-button, .submit-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hint-button {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.reset-button {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.run-button {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.submit-button {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.hint-button:hover, .reset-button:hover, .run-button:hover, .submit-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.code-editor-area {
+  flex: 1;
+  background: #0d1117;
+}
+
+.code-textarea {
+  width: 100%;
+  height: 100%;
+  background: #0d1117;
+  color: #e6edf3;
+  border: none;
+  padding: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+/* ================================
+   Output Section
+=============================== */
+.output-area {
+  border-top: 1px solid #30363d;
+  background: #161b22;
+}
+
+.output-section {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.output-header {
+  background: #21262d;
+  border-bottom: 1px solid #30363d;
+  padding: 0.75rem 1rem;
+}
+
+.output-header h3 {
+  color: #ffffff;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.test-results {
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.test-results.success {
+  border-left: 4px solid #22c55e;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.test-results.failure {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.test-cases {
+  margin-top: 0.75rem;
+}
+
+.test-case {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.test-case.passed {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.test-case.failed {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* ================================
+   Challenge Indicators
+=============================== */
+.challenge-indicators {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.challenge-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 36px;
+  height: 36px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0.5rem;
+  justify-content: center;
+}
+
+.challenge-indicator.current {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.challenge-indicator.completed {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: white;
+}
+
+.challenge-indicator.attempted {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.challenge-indicator:hover:not(.current) {
+  border-color: #3b82f6;
+  color: #3b82f6;
 }
 
 /************************************

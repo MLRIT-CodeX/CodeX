@@ -10,8 +10,8 @@ import {
   AlertCircle,
   Star
 } from 'lucide-react';
-import CourseSidebar from '../../components/CourseSidebar';
-import ContentHeader from '../../components/ContentHeader';
+import ModuleNavigationHeader from '../../components/ModuleNavigationHeader';
+import ModuleNavigationFooter from '../../components/ModuleNavigationFooter';
 import { useModuleData } from '../../hooks/useModuleData';
 import './Lecture.css';
 
@@ -23,7 +23,6 @@ const Lecture = () => {
   const { module, loading, error } = useModuleData(courseId, moduleId);
 
   const [expandedSections, setExpandedSections] = useState(new Set(['introduction']));
-  const [completedSections, setCompletedSections] = useState(new Set());
 
   // ✅ Navigation flow
   const prevPath = `/courses/${courseId}/module/${moduleId}/snippets`;
@@ -60,12 +59,7 @@ const Lecture = () => {
     setExpandedSections(newExpanded);
   };
 
-  // ✅ Mark as completed
-  const markSectionComplete = (type) => {
-    const newCompleted = new Set(completedSections);
-    newCompleted.add(type);
-    setCompletedSections(newCompleted);
-  };
+
 
   // ✅ Mock data for modules without lecture
   const getMockLectureData = () => ({
@@ -145,56 +139,33 @@ print("Sum:", a + b)</code></pre>`
       ? module.lecture
       : getMockLectureData();
 
-  const progressPercent = Math.round(
-    (completedSections.size / (lectureData.lectures.length || 1)) * 100
-  );
+
 
   /* ======================================
      ✅ Render
      ====================================== */
   return (
     <div className="lecture-layout">
-      <CourseSidebar courseId={courseId} currentModule={moduleId} />
-
+      <ModuleNavigationHeader 
+        currentTopic="lecture"
+        moduleTitle={module?.title || 'Module'}
+        courseTitle="Python Programming"
+      />
+      
       <div className="lecture-main">
-        <ContentHeader
-          title="Interactive Lecture"
-          subtitle={module.title}
-          prevPath={prevPath}
-          nextPath={nextPath}
-          currentTopic="Lecture"
-        />
-
         <div className="lecture-content">
-          {/* ✅ Progress Tracker */}
-          <div className="lecture-progress">
-            <div className="progress-header">
-              <h3>Lecture Progress</h3>
-              <span className="progress-percentage">{progressPercent}%</span>
-            </div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-            <p className="progress-text">
-              {completedSections.size} of {lectureData.lectures.length} sections
-              completed
-            </p>
-          </div>
+
 
           {/* ✅ Lecture Sections */}
           <div className="lecture-sections">
             {lectureData.lectures.map((section, idx) => {
               const sectionType = section?.type || `section-${idx}`;
               const isExpanded = expandedSections.has(sectionType);
-              const isCompleted = completedSections.has(sectionType);
 
               return (
                 <div
                   key={sectionType}
-                  className={`lecture-section ${isCompleted ? 'completed' : ''}`}
+                  className="lecture-section"
                 >
                   <div
                     className="section-header"
@@ -214,9 +185,6 @@ print("Sum:", a + b)</code></pre>`
                       </div>
                     </div>
                     <div className="section-controls">
-                      {isCompleted && (
-                        <CheckCircle size={20} className="completed-icon" />
-                      )}
                       <div className="expand-icon">
                         {isExpanded ? (
                           <ChevronDown size={20} />
@@ -237,14 +205,6 @@ print("Sum:", a + b)</code></pre>`
                             '<p>No content available for this section.</p>'
                         }}
                       />
-                      {!isCompleted && (
-                        <button
-                          className="complete-button"
-                          onClick={() => markSectionComplete(sectionType)}
-                        >
-                          <CheckCircle size={16} /> Mark as Complete
-                        </button>
-                      )}
                     </div>
                   )}
                 </div>
@@ -278,6 +238,10 @@ print("Sum:", a + b)</code></pre>`
           )}
         </div>
       </div>
+      
+      <ModuleNavigationFooter 
+        currentTopic="lecture"
+      />
     </div>
   );
 };

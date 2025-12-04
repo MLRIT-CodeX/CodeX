@@ -11,7 +11,8 @@ Goal: Beautiful, readable, and immersive
 =============================== */
 .lecture-layout {
   display: flex;
-  background: #0d1117; /* same as challenges page for consistency */
+  flex-direction: column;
+  background: #0d1117;
   color: #e2e8f0;
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
@@ -19,9 +20,16 @@ Goal: Beautiful, readable, and immersive
 
 .lecture-main {
   flex: 1;
-  padding: 2rem 2.5rem;
+  width: 100%;
   overflow-y: auto;
 }
+
+.lecture-content {
+  padding: 2rem 2.5rem;
+  min-height: calc(100vh - 200px);
+}
+
+
 
 /* ================================
    Loading / Error States

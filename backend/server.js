@@ -31,7 +31,22 @@ app.use("/api/roadmaps", require("./routes/roadmapRoutes"));   // Roadmaps
 app.use("/api/skill-tests", require("./routes/skillTestRoutes")); // Skill Tests
 app.use("/api/progress", require("./routes/userProgressRoutes")); // Progress
 app.use("/api/streak", require("./routes/streakRoutes")); // Streak Tracking
+console.log("Loading MCQ submission routes...");
+try {
+  app.use("/api/mcq-submissions", require("./routes/mcqSubmissionRoutes")); // MCQ Submissions
+  console.log("MCQ submission routes loaded successfully.");
+} catch (error) {
+  console.error("Error loading MCQ submission routes:", error.message);
+}
 app.use("/api", require("./routes/finalExamRoutes")); // Final Exams
+
+console.log("Loading contribution routes...");
+try {
+  app.use("/api/contributions", require("./routes/contributionRoutes")); // User Contributions
+  console.log("✅ Contribution routes loaded successfully.");
+} catch (error) {
+  console.error("❌ Error loading contribution routes:", error.message);
+}
 
 // Serve uploads statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

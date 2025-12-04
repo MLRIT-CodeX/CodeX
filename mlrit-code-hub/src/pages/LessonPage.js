@@ -830,7 +830,7 @@ int main() {
                           className="lesson-item-row module-test-item"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/courses/${courseId}/topic/${topic._id}/secure-test`);
+                            navigate(`/courses/${courseId}/module/${topic._id}/test`);
                           }}
                         >
                           <div className="lesson-status-marker">

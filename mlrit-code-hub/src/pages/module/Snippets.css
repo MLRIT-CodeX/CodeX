@@ -9,24 +9,33 @@ with clarity, contrast, and hierarchy.
 /* ================================
    Base Layout
 =============================== */
-.snippets-layout {
-  display: flex;
+.snippets-container {
   min-height: 100vh;
   background: #0d1117;
   color: #e2e8f0;
   font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .snippets-main {
   flex: 1;
-  padding: 2rem 2.5rem;
+  width: 100%;
   overflow-y: auto;
+}
+
+.snippets-content {
+  padding: 2rem 2.5rem;
+  min-height: calc(100vh - 200px);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
 }
 
 /* ================================
    Loading / Error States
 =============================== */
-.snippets-container {
+.snippets-loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -80,14 +89,8 @@ with clarity, contrast, and hierarchy.
 }
 
 /* ================================
-   Content Layout
+   Snippet Card Styles
 =============================== */
-.snippets-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-}
 
 /* ================================
    Snippet Card

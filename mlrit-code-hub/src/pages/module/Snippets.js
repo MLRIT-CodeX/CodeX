@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import CourseSidebar from '../../components/CourseSidebar';
-import ContentHeader from '../../components/ContentHeader';
+import ModuleNavigationHeader from '../../components/ModuleNavigationHeader';
+import ModuleNavigationFooter from '../../components/ModuleNavigationFooter';
 import { useModuleData } from '../../hooks/useModuleData';
 import './Snippets.css';
 
@@ -18,7 +18,7 @@ const Snippets = () => {
   // ✅ Loading state
   if (loading) {
     return (
-      <div className="snippets-container">
+      <div className="snippets-loading-container">
         <div className="loading-spinner"></div>
         <p>Loading snippets...</p>
       </div>
@@ -28,7 +28,7 @@ const Snippets = () => {
   // ✅ Error / Missing module
   if (error || !module) {
     return (
-      <div className="snippets-container">
+      <div className="snippets-loading-container">
         <div className="error-box">
           <h2>Error</h2>
           <p>{error || 'Module not found'}</p>
@@ -61,18 +61,14 @@ const Snippets = () => {
         ];
 
   return (
-    <div className="snippets-layout">
-      <CourseSidebar courseId={courseId} currentModule={moduleId} />
-
+    <div className="snippets-container">
+      <ModuleNavigationHeader 
+        currentTopic="snippets"
+        moduleTitle={module?.title || 'Module'}
+        courseTitle="Python Programming"
+      />
+      
       <div className="snippets-main">
-        <ContentHeader
-          title="Code Snippets"
-          subtitle={module.title}
-          prevPath={prevPath}
-          nextPath={nextPath}
-          currentTopic="Snippets"
-        />
-
         <div className="snippets-content">
           {snippets.map((snippet, index) => (
             <div key={index} className="snippet-card">
@@ -85,6 +81,10 @@ const Snippets = () => {
           ))}
         </div>
       </div>
+      
+      <ModuleNavigationFooter 
+        currentTopic="snippets"
+      />
     </div>
   );
 };

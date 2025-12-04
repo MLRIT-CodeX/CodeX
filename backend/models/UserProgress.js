@@ -1,21 +1,26 @@
 const mongoose = require("mongoose");
 
-// Lesson progress within a topic
-const lessonProgressSchema = new mongoose.Schema({
-  lessonId: { type: String, required: true }, // Using string ID for lesson identification
+/* ============================================================
+   ⭐ LECTURE PROGRESS SCHEMA
+   ============================================================ */
+const lectureProgressSchema = new mongoose.Schema({
+  lectureId: { type: String, required: true },
+  topic: { type: String, required: true },
   completed: { type: Boolean, default: false },
   completedAt: { type: Date },
-  timeSpent: { type: Number, default: 0 }, // in minutes
-  mcqScore: { type: Number, default: 0 }, // MCQ score
-  codingScore: { type: Number, default: 0 }, // Coding challenge score
-  totalScore: { type: Number, default: 0 }, // Combined score
-  maxScore: { type: Number, default: 0 }, // Maximum possible score
+  timeSpent: { type: Number, default: 0 },
+  mcqScore: { type: Number, default: 0 },
+  codingScore: { type: Number, default: 0 },
+  totalScore: { type: Number, default: 0 },
+  maxScore: { type: Number, default: 0 },
   attempts: { type: Number, default: 0 },
   mcqAnswers: [{ questionIndex: Number, selectedAnswer: Number, isCorrect: Boolean }],
   codingResults: [{ challengeIndex: Number, verdict: String, score: Number }]
 }, { _id: false });
 
-// Module test progress within a topic
+/* ============================================================
+   ⭐ MODULE TEST PROGRESS
+   ============================================================ */
 const moduleTestProgressSchema = new mongoose.Schema({
   attempted: { type: Boolean, default: false },
   completed: { type: Boolean, default: false },
@@ -30,11 +35,13 @@ const moduleTestProgressSchema = new mongoose.Schema({
   codingResults: [{ challengeIndex: Number, verdict: String, score: Number }]
 }, { _id: false });
 
-// Topic progress
-const topicProgressSchema = new mongoose.Schema({
-  topicId: { type: String, required: true }, // Using string ID for topic identification
-  topicTitle: { type: String, required: true },
-  lessons: [lessonProgressSchema],
+/* ============================================================
+   ⭐ MODULE PROGRESS
+   ============================================================ */
+const moduleProgressSchema = new mongoose.Schema({
+  moduleId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  moduleTitle: { type: String, required: true },
+  lectures: [lectureProgressSchema],
   moduleTest: moduleTestProgressSchema,
   completed: { type: Boolean, default: false },
   completionPercentage: { type: Number, default: 0, min: 0, max: 100 },
@@ -42,21 +49,17 @@ const topicProgressSchema = new mongoose.Schema({
   startedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+/* ============================================================
+   ⭐ USER PROGRESS MAIN SCHEMA
+   ============================================================ */
 const UserProgressSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  courseId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Course",
-    required: true,
-  },
-  topicsProgress: [topicProgressSchema],
-  overallProgress: { type: Number, default: 0, min: 0, max: 100 },
-  
-  // Final Exam Progress
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true },
+
+  modulesProgress: [moduleProgressSchema],
+  overallProgress: { type: Number, default: 0 },
+
+  /* ⭐ Final Exam */
   finalExamCompleted: { type: Boolean, default: false },
   finalExamMcqScore: { type: Number, default: 0 },
   finalExamCodingScore: { type: Number, default: 0 },
@@ -67,146 +70,153 @@ const UserProgressSchema = new mongoose.Schema({
   finalExamMcqAnswers: [{ questionIndex: Number, selectedAnswer: Number, isCorrect: Boolean }],
   finalExamCodingResults: [{ challengeIndex: Number, verdict: String, score: Number }],
   certificateEarned: { type: Boolean, default: false },
-  
+
   startedAt: { type: Date, default: Date.now },
   lastAccessedAt: { type: Date, default: Date.now },
-  // Backward compatibility
-  completedModules: {
-    type: [Number],
-    default: [],
-  },
-  testAttempt: {
-    score: Number,
-    totalMarks: Number,
-    percentage: Number,
-    attemptedAt: Date,
-    answers: [Object],
-  },
-}, {
-  timestamps: true,
-});
 
-// Indexes for performance
+}, { timestamps: true });
+
+/* ============================================================
+   ⭐ INDEX FOR PERFORMANCE
+   ============================================================ */
 UserProgressSchema.index({ userId: 1, courseId: 1 }, { unique: true });
 
-// Calculate overall progress based on topics
-UserProgressSchema.methods.calculateOverallProgress = function() {
-  if (!this.topicsProgress || this.topicsProgress.length === 0) return 0;
-  
-  const totalTopics = this.topicsProgress.length;
-  const completedTopics = this.topicsProgress.filter(tp => tp.completed).length;
-  
-  this.overallProgress = Math.round((completedTopics / totalTopics) * 100);
+/* ============================================================
+   ⭐ CALCULATE OVERALL PROGRESS
+   ============================================================ */
+UserProgressSchema.methods.calculateOverallProgress = function () {
+  if (!this.modulesProgress.length) return 0;
+
+  const total = this.modulesProgress.length;
+  const completed = this.modulesProgress.filter(m => m.completed).length;
+
+  this.overallProgress = Math.round((completed / total) * 100);
   return this.overallProgress;
 };
 
-// Update lesson progress
-UserProgressSchema.methods.updateLessonProgress = function(topicId, lessonId, progressData) {
-  let topic = this.topicsProgress.find(tp => tp.topicId === topicId);
-  
-  if (!topic) {
-    topic = {
-      topicId,
-      topicTitle: progressData.topicTitle || 'Unknown Topic',
-      lessons: [],
+/* ============================================================
+   ⭐ UPDATE LECTURE PROGRESS
+   ============================================================ */
+UserProgressSchema.methods.updateLectureProgress = function (moduleId, lectureId, progressData) {
+  let module = this.modulesProgress.find(m => m.moduleId.toString() === moduleId.toString());
+
+  if (!module) {
+    module = {
+      moduleId,
+      moduleTitle: progressData.moduleTitle || "Unknown Module",
+      lectures: [],
       completed: false,
       completionPercentage: 0,
       startedAt: new Date()
     };
-    this.topicsProgress.push(topic);
+    this.modulesProgress.push(module);
   }
-  
-  let lesson = topic.lessons.find(lp => lp.lessonId === lessonId);
-  
-  if (!lesson) {
-    lesson = {
-      lessonId,
+
+  let lecture = module.lectures.find(l => l.lectureId === lectureId);
+
+  if (!lecture) {
+    lecture = {
+      lectureId,
+      topic: progressData.topic || "Unknown Topic",
       completed: false,
-      timeSpent: 0,
       mcqScore: 0,
       codingScore: 0,
       totalScore: 0,
-      maxScore: 0,
       attempts: 0,
       mcqAnswers: [],
       codingResults: []
     };
-    topic.lessons.push(lesson);
+    module.lectures.push(lecture);
   }
-  
-  // Update lesson data
-  Object.assign(lesson, progressData);
-  lesson.attempts += 1;
-  
+
+  Object.assign(lecture, progressData);
+  lecture.attempts += 1;
+
   if (progressData.completed) {
-    lesson.completed = true;
-    lesson.completedAt = new Date();
+    lecture.completed = true;
+    lecture.completedAt = new Date();
   }
-  
-  // Recalculate topic progress
-  const totalLessons = topic.lessons.length;
-  const completedLessons = topic.lessons.filter(lp => lp.completed).length;
-  topic.completionPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-  topic.completed = topic.completionPercentage === 100;
-  
-  if (topic.completed && !topic.completedAt) {
-    topic.completedAt = new Date();
-  }
-  
-  // Update overall progress
+
+  const completedLectures = module.lectures.filter(l => l.completed).length;
+  module.completionPercentage = Math.round((completedLectures / module.lectures.length) * 100);
+  module.completed = module.completionPercentage === 100;
+
+  if (module.completed) module.completedAt = new Date();
+
   this.calculateOverallProgress();
   this.lastAccessedAt = new Date();
-  
+
+  this.markModified("modulesProgress");
+
   return this.save();
 };
 
-// Update module test progress
-UserProgressSchema.methods.updateModuleTestProgress = function(topicId, testData) {
-  let topic = this.topicsProgress.find(tp => tp.topicId === topicId);
-  
-  if (!topic) {
-    topic = {
-      topicId,
-      topicTitle: testData.topicTitle || 'Unknown Topic',
-      lessons: [],
+/* ============================================================
+   ⭐ UPDATE MODULE TEST PROGRESS — FIXED VERSION
+   ============================================================ */
+UserProgressSchema.methods.updateModuleTestProgress = function (moduleId, testData) {
+  let moduleIndex = this.modulesProgress.findIndex(
+    m => m.moduleId.toString() === moduleId.toString()
+  );
+
+  if (moduleIndex === -1) {
+    this.modulesProgress.push({
+      moduleId,
+      moduleTitle: testData.moduleTitle || "Unknown Module",
+      lectures: [],
       completed: false,
       completionPercentage: 0,
-      startedAt: new Date()
-    };
-    this.topicsProgress.push(topic);
+      startedAt: new Date(),
+      moduleTest: {}
+    });
+    moduleIndex = this.modulesProgress.length - 1;
   }
-  
-  topic.moduleTest = {
+
+  const module = this.modulesProgress[moduleIndex];
+
+  module.moduleTest = {
     attempted: true,
     completed: true,
     mcqScore: testData.mcqScore || 0,
     codingScore: testData.codingScore || 0,
     totalScore: testData.totalScore || 0,
     maxScore: testData.maxScore || 0,
-    percentage: testData.maxScore > 0 ? Math.round((testData.totalScore / testData.maxScore) * 100) : 0,
+    percentage: testData.maxScore > 0
+      ? Math.round((testData.totalScore / testData.maxScore) * 100)
+      : 0,
     attemptedAt: new Date(),
     completedAt: new Date(),
     mcqAnswers: testData.mcqAnswers || [],
-    codingResults: testData.codingResults || []
+    codingResults: testData.codingResults || [],
   };
-  
+
   this.lastAccessedAt = new Date();
+
+  // ⭐ The critical fix — mark exact nested path
+  this.markModified(`modulesProgress.${moduleIndex}.moduleTest`);
+
   return this.save();
 };
 
-// Update final exam progress
-UserProgressSchema.methods.updateFinalExamProgress = function(examData) {
+/* ============================================================
+   ⭐ UPDATE FINAL EXAM PROGRESS
+   ============================================================ */
+UserProgressSchema.methods.updateFinalExamProgress = function (examData) {
   this.finalExamCompleted = true;
-  this.finalExamMcqScore = examData.mcqScore || 0;
-  this.finalExamCodingScore = examData.codingScore || 0;
-  this.finalExamTotalScore = examData.totalScore || 0;
-  this.finalExamMaxScore = examData.maxScore || 0;
+  this.finalExamMcqScore = examData.mcqScore;
+  this.finalExamCodingScore = examData.codingScore;
+  this.finalExamTotalScore = examData.totalScore;
+  this.finalExamMaxScore = examData.maxScore;
   this.finalExamAttempts = (this.finalExamAttempts || 0) + 1;
   this.finalExamCompletedAt = new Date();
-  this.finalExamMcqAnswers = examData.mcqAnswers || [];
-  this.finalExamCodingResults = examData.codingResults || [];
-  
+  this.finalExamMcqAnswers = examData.mcqAnswers;
+  this.finalExamCodingResults = examData.codingResults;
+
   this.lastAccessedAt = new Date();
+
+  this.markModified("finalExamMcqAnswers");
+  this.markModified("finalExamCodingResults");
+
   return this.save();
 };
 

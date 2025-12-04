@@ -1,28 +1,500 @@
 /*******************************************
- 📘 THEORY PAGE - Modern LMS Design
+ 🎓 PROFESSIONAL THEORY PAGE - COURSERA/HACKERRANK STYLE
 --------------------------------------------
-By: UI/UX Specialist (10+ yrs experience)
-Goal: Elegant, readable, and interactive
-dark mode design for course theory modules.
+Modern, clean, and professional design inspired by
+leading educational platforms like Coursera & HackerRank
 *******************************************/
 
 /* ================================
-   Base Layout
+   CSS Variables & Theme
 =============================== */
-.theory-layout {
-  display: flex;
+:root {
+  --primary-blue: #0056D3;
+  --primary-blue-hover: #004BB8;
+  --primary-blue-light: #E8F2FF;
+  --secondary-blue: #2E86AB;
+  --accent-orange: #F77F00;
+  --accent-green: #16A085;
+  
+  --text-primary: #1D1D1F;
+  --text-secondary: #515154;
+  --text-muted: #86868B;
+  
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F7F7F9;
+  --bg-accent: #FAFAFA;
+  --bg-code: #F5F5F7;
+  
+  --border-light: #E5E5E7;
+  --border-medium: #D1D1D6;
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  
+  --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* ================================
+   Base Layout & Container
+=============================== */
+.theory-container {
   min-height: 100vh;
-  background: #0d1117;
-  color: #e2e8f0;
-  font-family: 'Inter', sans-serif;
+  background: var(--bg-secondary);
+  font-family: var(--font-system);
+}
+
+.theory-container {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
 }
 
 .theory-main {
   flex: 1;
+  width: 100%;
+  background: var(--bg-primary);
+  overflow-y: auto;
+  position: relative;
+}
+
+.theory-content {
+  padding: 2rem;
+  min-height: calc(100vh - 200px);
+}
+
+/* ================================
+   Header Section - Coursera Style
+=============================== */
+.theory-header {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
+  padding: 24px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.theory-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theory-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.theory-breadcrumb a {
+  color: var(--primary-blue);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.theory-breadcrumb a:hover {
+  color: var(--primary-blue-hover);
+}
+
+.theory-breadcrumb-separator {
+  color: var(--text-muted);
+}
+
+.theory-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.theory-progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.progress-bar {
+  width: 120px;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ================================
+   Navigation Tabs - HackerRank Style
+=============================== */
+.theory-nav {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
+  padding: 0 32px;
+  position: sticky;
+  top: 97px;
+  z-index: 99;
+}
+
+.theory-tabs {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 16px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-accent);
+}
+
+.tab-button.active {
+  color: var(--primary-blue);
+  border-bottom-color: var(--primary-blue);
+  background: var(--primary-blue-light);
+}
+
+.tab-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tab-icon {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+}
+
+/* ================================
+   Content Area - Professional Layout
+=============================== */
+.theory-content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+  min-height: calc(100vh - 200px);
+}
+
+.theory-content {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+/* ================================
+   Text Content - Coursera Typography
+=============================== */
+.text-content {
+  padding: 40px;
+  line-height: 1.6;
+  font-size: 16px;
+  color: var(--text-primary);
+  max-width: 800px;
+}
+
+.document-content {
+  font-family: var(--font-system);
+}
+
+.document-content h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 24px 0;
+  line-height: 1.25;
+  border-bottom: 2px solid var(--primary-blue);
+  padding-bottom: 12px;
+}
+
+.document-content h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 32px 0 16px 0;
+  line-height: 1.3;
+}
+
+.document-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 24px 0 12px 0;
+  line-height: 1.4;
+}
+
+.document-content h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 20px 0 8px 0;
+}
+
+.document-content p {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.document-content ul,
+.document-content ol {
+  margin: 16px 0;
+  padding-left: 24px;
+  color: var(--text-primary);
+}
+
+.document-content li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.document-content blockquote {
+  background: var(--bg-accent);
+  border-left: 4px solid var(--primary-blue);
+  margin: 20px 0;
+  padding: 16px 20px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.document-content strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.document-content em {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* ================================
+   Code Blocks - HackerRank Style
+=============================== */
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  margin: 20px 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: auto;
+  position: relative;
+}
+
+.code-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+}
+
+.code-block code {
+  color: var(--text-primary);
+  background: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.inline-code {
+  background: var(--bg-code);
+  color: var(--text-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  border: 1px solid var(--border-light);
+}
+
+/* ================================
+   File Viewer - Professional Style
+=============================== */
+.file-viewer {
+  padding: 0;
+}
+
+.file-header {
+  background: var(--bg-secondary);
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: between;
+  gap: 12px;
+}
+
+.file-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.file-type-badge {
+  background: var(--primary-blue);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.file-action-btn {
+  background: none;
+  border: 1px solid var(--border-medium);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.file-action-btn:hover {
+  background: var(--bg-accent);
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+}
+
+.file-content {
+  padding: 24px;
+}
+
+.pdf-viewer {
+  width: 100%;
+  height: 600px;
+  border: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ================================
+   PPT Viewer - Slide Style
+=============================== */
+.ppt-viewer {
+  padding: 0;
+}
+
+.slide-container {
+  position: relative;
+  background: var(--bg-primary);
+}
+
+.slide-content {
+  min-height: 500px;
+  padding: 40px;
   display: flex;
   flex-direction: column;
-  padding: 2rem 2.5rem;
-  overflow-y: auto;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.slide-navigation {
+  background: var(--bg-secondary);
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slide-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.slide-btn {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.slide-btn:hover:not(:disabled) {
+  background: var(--primary-blue-hover);
+}
+
+.slide-btn:disabled {
+  background: var(--border-medium);
+  cursor: not-allowed;
+}
+
+.slide-counter {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fullscreen-btn {
+  background: none;
+  border: 1px solid var(--border-medium);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fullscreen-btn:hover {
+  background: var(--bg-accent);
+  border-color: var(--primary-blue);
 }
 
 /* ================================
@@ -34,18 +506,18 @@ dark mode design for course theory modules.
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 70vh;
-  color: #9ca3af;
+  min-height: 400px;
+  text-align: center;
 }
 
 .loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 4px solid #3b82f6;
-  border-top: 4px solid transparent;
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-light);
+  border-top: 3px solid var(--primary-blue);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
 }
 
 @keyframes spin {
@@ -54,99 +526,30 @@ dark mode design for course theory modules.
   }
 }
 
+.theory-error h2 {
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.theory-error p {
+  color: var(--text-secondary);
+  margin: 0 0 20px 0;
+}
+
 .back-button {
-  margin-top: 1rem;
-  background: #3b82f6;
+  background: var(--primary-blue);
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 12px 24px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.2s ease;
 }
 
 .back-button:hover {
-  background: #2563eb;
-}
-
-/* ================================
-   Tabs Navigation
-=============================== */
-.theory-tabs {
-  display: flex;
-  justify-content: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.tab-button {
-  background: #1e2533;
-  color: #cbd5e1;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.tab-button:hover:not(:disabled) {
-  background: #2b3244;
-  color: #fff;
-}
-
-.tab-button.active {
-  background: #3b82f6;
-  color: #fff;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
-}
-
-.tab-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ================================
-   Content Container
-=============================== */
-.theory-content {
-  background: #1a1f29;
-  border-radius: 12px;
-  padding: 2rem;
-  border: 1px solid #2a3140;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* ================================
-   Text Tab
-=============================== */
-.text-content {
-  line-height: 1.7;
-  font-size: 1rem;
-  color: #d1d5db;
-}
-
-.document-content h1,
-.document-content h2,
-.document-content h3 {
-  color: #e2e8f0;
-  margin-top: 1rem;
-  font-weight: 700;
-}
-
-.document-content h1 {
-  font-size: 1.6rem;
-  border-bottom: 2px solid #3b82f6;
-  display: inline-block;
-  padding-bottom: 4px;
-}
-
-.document-content h2 {
-  font-size: 1.3rem;
-  margin-top: 1.2rem;
+  background: var(--primary-blue-hover);
 }
 
 .document-content h3 {

@@ -118,7 +118,10 @@ const getLeaderboard = async (req, res) => {
       entry.percentile = Math.round(((leaderboard.length - idx) / leaderboard.length) * 100);
     });
 
-    console.log('Final leaderboard data:', leaderboard);
+    console.log('Final leaderboard data (first 3 entries):');
+    leaderboard.slice(0, 3).forEach((entry, idx) => {
+      console.log(`  ${idx + 1}. ${entry.name}: Score ${entry.totalScore}, Solved ${entry.totalSolved}`);
+    });
     console.log('Leaderboard length:', leaderboard.length);
     console.log('Is array:', Array.isArray(leaderboard));
     

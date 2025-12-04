@@ -375,7 +375,7 @@ const ModuleDisplayNew = () => {
                     {topic.moduleTest && (
                       <div 
                         className="topic-item"
-                        onClick={() => navigate(`/courses/${courseId}/topic/${topic._id}/test`)}
+                        onClick={() => navigate(`/courses/${courseId}/module/${topic._id}/test`)}
                       >
                         <div className="topic-status-icon test">
                           <Award className="w-4 h-4" />

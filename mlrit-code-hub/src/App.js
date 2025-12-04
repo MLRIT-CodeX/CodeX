@@ -9,6 +9,7 @@ import "./utils/errorSuppression";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserContext from "./context/UserContext";
+import { CourseSidebarProvider } from "./contexts/CourseSidebarContext";
 
 // Pages
 import LandingPage from "./pages/landingpage";
@@ -56,6 +57,7 @@ import Snippets from "./pages/module/Snippets";
 import Lecture from "./pages/module/Lecture";
 import MCQ from "./pages/module/MCQ";
 import Challenges from "./pages/module/Challenges";
+import CourseLayout from "./components/CourseLayout";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -115,7 +117,7 @@ function App() {
 
   function AppContent() {
     const path = usePath();
-    // Hide Navbar on SecureTest, ModuleTest, FinalExam, Lesson pages, and Problem Solving pages for immersive experience
+    // Hide Navbar on course pages, tests, lessons, and problem solving pages for immersive experience
     const isSecureTest = /^\/courses\/[^/]+\/test$/.test(path);
     const isModuleTest = /^\/courses\/[^/]+\/topic\/[^/]+\/(test|secure-test)$/.test(path);
     const isLessonPage = /^\/courses\/[^/]+\/topic\/[^/]+\/lesson\/[^/]+$/.test(path);
@@ -123,7 +125,13 @@ function App() {
     const isFinalExamResults = /^\/courses\/[^/]+\/final-exam\/results$/.test(path);
     const isProblemSolving = /^\/solve\/[^/]+$/.test(path);
     const isContestProblemSolving = /^\/contest\/[^/]+\/solve\/[^/]+$/.test(path);
-    const hideNavbar = isSecureTest || isModuleTest || isLessonPage || isFinalExam || isProblemSolving || isContestProblemSolving;
+    
+    // Course page patterns - hide navbar on all course content pages
+    const isCourseDetailPage = /^\/courses\/[^/]+$/.test(path);
+    const isModuleContentPage = /^\/courses\/[^/]+\/module\/[^/]+\/(theory|snippets|lecture|mcq|challenges)$/.test(path);
+    const isModuleTestPage = /^\/courses\/[^/]+\/module\/[^/]+\/test$/.test(path);
+    
+    const hideNavbar = isSecureTest || isModuleTest || isLessonPage || isFinalExam || isProblemSolving || isContestProblemSolving || isCourseDetailPage || isModuleContentPage || isModuleTestPage;
     return (
       <>
         {!hideNavbar && <Navbar />}
@@ -175,13 +183,15 @@ function App() {
           <Route path="/courses" element={<ProtectedRoute allowedRole={["student", "admin"]}><CourseCatalog /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute allowedRole={["student", "admin"]}><Dashboard /></ProtectedRoute>} />
 
-          {/* Module Routes */}
-          <Route path="/courses/:courseId/module/:moduleId/theory" element={<ProtectedRoute allowedRole={["student", "admin"]}><Theory /></ProtectedRoute>} />
-          <Route path="/courses/:courseId/module/:moduleId/snippets" element={<ProtectedRoute allowedRole={["student", "admin"]}><Snippets /></ProtectedRoute>} />
-          <Route path="/courses/:courseId/module/:moduleId/lecture" element={<ProtectedRoute allowedRole={["student", "admin"]}><Lecture /></ProtectedRoute>} />
-          <Route path="/courses/:courseId/module/:moduleId/mcq" element={<ProtectedRoute allowedRole={["student", "admin"]}><MCQ /></ProtectedRoute>} />
-          <Route path="/courses/:courseId/module/:moduleId/challenges" element={<ProtectedRoute allowedRole={["student", "admin"]}><Challenges /></ProtectedRoute>} />
-          <Route path="/courses/:courseId/module/:moduleId/test" element={<ProtectedRoute allowedRole={["student", "admin"]}><ModuleTestPage /></ProtectedRoute>} />
+          {/* Course Layout with Nested Module Routes */}
+          <Route path="/courses/:courseId/module/:moduleId/*" element={<ProtectedRoute allowedRole={["student", "admin"]}><CourseLayout /></ProtectedRoute>}>
+            <Route path="theory" element={<Theory />} />
+            <Route path="snippets" element={<Snippets />} />
+            <Route path="lecture" element={<Lecture />} />
+            <Route path="mcq" element={<MCQ />} />
+            <Route path="challenges" element={<Challenges />} />
+            <Route path="test" element={<ModuleTestPage />} />
+          </Route>
 
           {/* 404 Fallback */}
           <Route path="*" element={<Navigate to="/" />} />
@@ -192,9 +202,11 @@ function App() {
 
   return (
     <UserContext.Provider value={{ user, setUser }}>
-      <Router>
-        <AppContent />
-      </Router>
+      <CourseSidebarProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </CourseSidebarProvider>
     </UserContext.Provider>
   );
 }

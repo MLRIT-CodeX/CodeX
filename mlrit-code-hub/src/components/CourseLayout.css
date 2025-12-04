@@ -1,0 +1,37 @@
+.course-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.course-content {
+  flex: 1;
+  margin-left: 280px; /* Match sidebar width */
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+  background: transparent; /* Let individual pages control their background */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dynamic sidebar collapse handling */
+.course-layout.sidebar-collapsed .course-content {
+  margin-left: 60px; /* Match collapsed sidebar width */
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .course-content {
+    margin-left: 0;
+  }
+  
+  .course-layout .course-sidebar.mobile-open ~ .course-content {
+    margin-left: 0;
+  }
+}
+
+/* Ensure content takes full height */
+.course-content > * {
+  min-height: 100vh;
+}

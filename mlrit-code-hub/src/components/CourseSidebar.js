@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -13,42 +13,86 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { useCourseSidebar } from '../contexts/CourseSidebarContext';
 import './CourseSidebar.css';
 
 const CourseSidebar = ({ courseId, currentModule }) => {
-  const [modules, setModules] = useState([]);
-  const [courseTitle, setCourseTitle] = useState('');
-  const [expandedModules, setExpandedModules] = useState(new Set([currentModule]));
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const sidebarRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem('token');
+  
+  const {
+    getSidebarState,
+    setExpandedModules,
+    setIsCollapsed,
+    setScrollPosition,
+    setModulesData
+  } = useCourseSidebar();
+
+  // Get persistent state for this course
+  const {
+    modules,
+    courseTitle,
+    expandedModules,
+    isCollapsed,
+    scrollPosition,
+    isLoading
+  } = getSidebarState(courseId);
 
   useEffect(() => {
     const fetchModules = async () => {
       try {
-        // Fetch course title and modules together
+        // Only fetch if we don't have data yet or if it's loading
+        if (modules.length > 0 && !isLoading) return;
+        
         const res = await axios.get(`http://localhost:5000/api/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setModules(res.data.modules || []);
-        setCourseTitle(res.data.title || 'Untitled Course');
+        
+        setModulesData(courseId, res.data.modules || [], res.data.title || 'Untitled Course');
+        
+        // Ensure current module is expanded when modules load
+        if (currentModule) {
+          const newExpanded = new Set(expandedModules);
+          newExpanded.add(currentModule.toString());
+          setExpandedModules(courseId, newExpanded);
+        }
       } catch (err) {
         console.error('Error fetching course modules:', err);
       }
     };
 
     if (courseId && token) fetchModules();
-  }, [courseId, token]);
+  }, [courseId, token, currentModule]);
+
+  // Restore scroll position when component mounts
+  useEffect(() => {
+    if (sidebarRef.current && scrollPosition > 0) {
+      sidebarRef.current.scrollTop = scrollPosition;
+    }
+  }, [scrollPosition]);
+
+  // Save scroll position when scrolling
+  const handleScroll = () => {
+    if (sidebarRef.current) {
+      setScrollPosition(courseId, sidebarRef.current.scrollTop);
+    }
+  };
 
   const toggleModule = (moduleId) => {
     const updated = new Set(expandedModules);
     updated.has(moduleId) ? updated.delete(moduleId) : updated.add(moduleId);
-    setExpandedModules(updated);
+    setExpandedModules(courseId, updated);
+  };
+
+  const handleCollapse = () => {
+    setIsCollapsed(courseId, !isCollapsed);
   };
 
   const handleNavigation = (path) => {
+    console.log('🔗 Navigating to:', path);
     navigate(path);
     setIsMobileOpen(false);
   };
@@ -115,7 +159,11 @@ const CourseSidebar = ({ courseId, currentModule }) => {
         />
       )}
 
-      <div className={`course-sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
+      <div 
+        className={`course-sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}
+        ref={sidebarRef}
+        onScroll={handleScroll}
+      >
         {/* Header */}
         <div className="sidebar-header">
           <button
@@ -128,7 +176,7 @@ const CourseSidebar = ({ courseId, currentModule }) => {
 
           <button
             className="collapse-button"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={handleCollapse}
           >
             <ChevronRight size={20} className={isCollapsed ? '' : 'rotated'} />
           </button>
@@ -156,7 +204,7 @@ const CourseSidebar = ({ courseId, currentModule }) => {
             if (!mod || !mod._id) return null;
             const isExpanded = expandedModules.has(mod._id.toString());
             const topics = getModuleTopics(mod._id);
-            const isCurrent = currentModule === mod._id.toString();
+            const isCurrent = currentModule && currentModule.toString() === mod._id.toString();
 
             return (
               <div key={mod._id} className="module-section">
