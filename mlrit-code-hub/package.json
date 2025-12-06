@@ -60,6 +60,9 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0"
+    "@craco/craco": "^7.1.0",
+    "autoprefixer": "^10.4.22",
+    "postcss-import": "^16.1.1",
+    "tailwindcss": "^4.1.17"
   }
 }

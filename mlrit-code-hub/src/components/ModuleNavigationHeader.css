@@ -13,7 +13,7 @@ Professional, clean navigation experience
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   border-bottom: 2px solid #333;
   font-size: 0.9rem;
-  height: 70px;
+  height: 65px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -69,17 +69,6 @@ Professional, clean navigation experience
   min-width: 0;
   flex-shrink: 1;
   height: 100%;
-}
-
-.course-title {
-  color: #9ca3af;
-  font-size: 0.75rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-  line-height: 1.2;
 }
 
 .module-title {

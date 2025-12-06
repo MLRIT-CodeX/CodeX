@@ -676,7 +676,7 @@
 
 .course-desc-template {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: white;
   line-height: 1.5;
   margin-bottom: 16px;
   flex-grow: 1;
@@ -794,7 +794,7 @@
   display: inline-block;
   padding: 4px 8px;
   background: var(--background-light);
-  color: var(--text-secondary);
+  color: #ffffff !important;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;

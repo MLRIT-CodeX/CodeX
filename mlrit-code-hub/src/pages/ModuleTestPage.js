@@ -48,6 +48,7 @@ const ModuleTestPage = () => {
   const [testStartTime, setTestStartTime] = useState(null);
   const containerRef = useRef(null);
   const verticalContainerRef = useRef(null);
+  const introRef = useRef(null);
   const isModifiedRef = useRef(false);
 
   const token = localStorage.getItem('token');
@@ -194,6 +195,13 @@ int main() {
       return () => clearInterval(timer);
     }
   }, [moduleTest, showResults]);
+
+  // Scroll to intro when it's shown
+  useEffect(() => {
+    if (showIntro && introRef.current) {
+      introRef.current.scrollTop = 0;
+    }
+  }, [showIntro]);
 
 
   const handleAnswerSelect = (questionIndex, optionIndex) => {
@@ -834,7 +842,7 @@ int main() {
   if (showIntro) {
     return (
       <div className="module-test-container">
-        <div className="test-intro">
+        <div className="test-intro" ref={introRef}>
           <div className="intro-header">
             <h1>Module Test: {topic?.title}</h1>
             <p className="intro-subtitle">Are you ready to test your knowledge of {topic?.title}?</p>

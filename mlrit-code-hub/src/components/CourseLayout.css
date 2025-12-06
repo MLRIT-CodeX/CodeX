@@ -20,6 +20,12 @@
   margin-left: 60px; /* Match collapsed sidebar width */
 }
 
+/* Hide sidebar and give full width to content on module test pages */
+.course-layout.hide-sidebar .course-content {
+  margin-left: 0;
+  width: 100%;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .course-content {

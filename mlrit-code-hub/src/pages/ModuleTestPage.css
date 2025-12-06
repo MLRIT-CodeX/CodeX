@@ -1438,7 +1438,8 @@
   padding: 2rem;
   background: #1a1a1a;
   color: #ffffff;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .intro-header {

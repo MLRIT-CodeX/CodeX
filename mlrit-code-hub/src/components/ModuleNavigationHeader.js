@@ -85,7 +85,6 @@ const ModuleNavigationHeader = ({
       {/* Left Section - Course Navigation */}
       <div className="nav-header-left">
         <div className="course-info">
-          <span className="course-title">{courseTitle}</span>
           <span className="module-title">{moduleTitle}</span>
         </div>
       </div>

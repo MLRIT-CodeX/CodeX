@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect, useState, useCallback } from "react";
 import PropTypes from 'prop-types';
 import { useParams, useNavigate, useLocation } from "react-router-dom";
@@ -25,11 +26,20 @@ import {
   AlertTriangle
 } from "lucide-react";
 import CourseLeaderboard from "./CourseLeaderboard.js";
+import Navbar from "../components/Navbar.js";
 import { shouldShowNavbar } from "../utils/navbarUtils";
 import "./ModernCourseDetail.css";
 
 // About Section Component
-const AboutSection = ({ courseId, userId, token, refreshTrigger }) => {
+/**
+ * @param {{
+ *   courseId: string;
+ *   userId: string;
+ *   token: string;
+ *   refreshTrigger: number;
+ * }} props
+ */
+function AboutSection({ courseId, userId, token, refreshTrigger }) {
   const [aboutData, setAboutData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -92,6 +102,13 @@ const AboutSection = ({ courseId, userId, token, refreshTrigger }) => {
       </div>
     </div>
   );
+};
+
+AboutSection.propTypes = {
+  courseId: PropTypes.string.isRequired,
+  userId: PropTypes.string.isRequired,
+  token: PropTypes.string.isRequired,
+  refreshTrigger: PropTypes.number.isRequired,
 };
 
 const ModernCourseDetail = () => {
@@ -451,7 +468,9 @@ const ModernCourseDetail = () => {
   };
 
   return (
-    <div className={`modern-course-container ${showNavbar ? 'with-navbar' : ''}`}>
+    <>
+      {showNavbar && <Navbar />}
+      <div className={`modern-course-container ${showNavbar ? 'with-navbar' : ''}`}>
       {/* Hero Section */}
       <div className="hero-section">
         <div className="hero-background"></div>
@@ -471,7 +490,7 @@ const ModernCourseDetail = () => {
           </div>
           <div className="course-hero">
             <div className="course-info">
-              <h1 className="hero-title">{course.title}</h1>
+              <p className="hero-title">{course.title}</p>
               <p className="hero-description">{course.description}</p>
 
               <div className="stats-row">
@@ -492,26 +511,6 @@ const ModernCourseDetail = () => {
                   <span>4.8 rating</span>
                 </div>
               </div>
-
-              {isEnrolled && (
-                <div className="progress-card">
-                  <div className="progress-info">
-                    <span className="progress-label">PROGRESS</span>
-                    <span className="progress-value">{progressPercent}%</span>
-                  </div>
-                  <div className="modern-progress-bar">
-                    <div
-                      className="modern-progress-fill"
-                      style={{ width: `${progressPercent}%` }}
-                    ></div>
-                  </div>
-                  <div className="progress-summary">
-                    <span className="summary-text">
-                      Total Progress: {progressDetails.completedComponents}/{progressDetails.totalComponents} components
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Action Panel */}
@@ -647,14 +646,7 @@ const ModernCourseDetail = () => {
       <div className="modern-content">
         {activeTab === "curriculum" && (
           <div className="curriculum-section">
-            <div className="curriculum-header">
-              <div className="header-content">
-                <p className="section-title">Course Curriculum</p>
-                <p className="curriculum-subtitle">
-                  {course.modules?.length || 0} modules • {course.duration}
-                </p>
-              </div>
-            </div>
+            
 
             <div className="modules-grid">
               {(course.modules || []).map((module, moduleIndex) => {
@@ -888,7 +880,7 @@ const ModernCourseDetail = () => {
                     <Shield size={32} />
                   </div>
                   <div className="exam-info">
-                    <h3 className="exam-title">{course.finalExam.title}</h3>
+                    <p className="exam-title">{course.finalExam.title}</p>
                     <p className="exam-description">
                       {course.finalExam.description}
                     </p>
@@ -955,6 +947,7 @@ const ModernCourseDetail = () => {
 
         {/* ABOUT */}
         {activeTab === "overview" && (
+          // @ts-ignore - Component props are properly validated with PropTypes
           <AboutSection
             courseId={courseId}
             userId={userId}
@@ -974,6 +967,7 @@ const ModernCourseDetail = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

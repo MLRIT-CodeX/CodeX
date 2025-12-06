@@ -9,7 +9,7 @@ module.exports = {
     postcss: {
       plugins: [
         require("postcss-import"),
-        require("@tailwindcss/postcss"),
+        require("tailwindcss"),
         require("autoprefixer"),
       ],
     },

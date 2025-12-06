@@ -266,7 +266,7 @@
 }
 
 .test-navbar{
-  height: 4rem !important;
+  height: 80px !important;
   background: #1a1a1a;
 }
 
@@ -1685,7 +1685,9 @@
 
 .test-main-content{
   background: #1a1a1a;
-  padding-bottom: 100px; /* Add space for fixed navigation */
+  height: flexible;
+  margin-top: 80px !important;
+  margin-bottom: 80px !important;
 }
 
 /* Test Navigation Bottom Bar */
@@ -1702,7 +1704,7 @@
   align-items: center;
   gap: 16px;
   z-index: 100;
-  min-height: 80px;
+  height: 80px;
 }
 
 .test-navigation .question-indicators {
