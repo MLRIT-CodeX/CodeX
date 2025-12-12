@@ -131,7 +131,10 @@ function App() {
     const isModuleContentPage = /^\/courses\/[^/]+\/module\/[^/]+\/(theory|snippets|lecture|mcq|challenges)$/.test(path);
     const isModuleTestPage = /^\/courses\/[^/]+\/module\/[^/]+\/test$/.test(path);
     
-    const hideNavbar = isSecureTest || isModuleTest || isLessonPage || isFinalExam || isProblemSolving || isContestProblemSolving || isCourseDetailPage || isModuleContentPage || isModuleTestPage;
+    // Auth pages - hide navbar on login and register pages
+    const isAuthPage = path === '/login' || path === '/register';
+    
+    const hideNavbar = isSecureTest || isModuleTest || isLessonPage || isFinalExam || isProblemSolving || isContestProblemSolving || isCourseDetailPage || isModuleContentPage || isModuleTestPage || isAuthPage;
     return (
       <>
         {!hideNavbar && <Navbar />}

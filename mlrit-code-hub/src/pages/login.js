@@ -16,11 +16,6 @@ const Login = () => {
 
   return (
     <div className="auth-container">
-      <div className="auth-background">
-        <div className="gradient-sphere gradient-sphere-1"></div>
-        <div className="gradient-sphere gradient-sphere-2"></div>
-        <div className="gradient-sphere gradient-sphere-3"></div>
-      </div>
       <div className="auth-card">
         {/* Logo */}
         <Link to="/" className="auth-logo">

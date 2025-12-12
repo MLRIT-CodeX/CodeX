@@ -179,9 +179,6 @@ print("Sum:", a + b)</code></pre>`
                         <h3 className="section-title">
                           {getSectionTitle(sectionType)}
                         </h3>
-                        <span className="section-number">
-                          Section {idx + 1}
-                        </span>
                       </div>
                     </div>
                     <div className="section-controls">

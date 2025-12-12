@@ -8,29 +8,78 @@ const fs = require("fs");
 
 // GET /api/profile
 router.get("/", authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user.id).select("-password");
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json(user);
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ 
+      message: "Failed to fetch profile", 
+      error: error.message 
+    });
+  }
 });
 
 // PUT /api/profile
 router.put("/", authenticateToken, async (req, res) => {
-  const { name, email, dob, gender, college, year, department, rollNumber, codingProfiles } = req.body;
-  const updateFields = { name, email };
-  if (dob !== undefined) updateFields.dob = dob;
-  if (gender !== undefined) updateFields.gender = gender;
-  if (college !== undefined) updateFields.college = college;
-  if (year !== undefined) updateFields.year = year;
-  if (department !== undefined) updateFields.department = department;
-  if (rollNumber !== undefined) updateFields.rollNumber = rollNumber;
-  if (codingProfiles !== undefined) updateFields.codingProfiles = codingProfiles;
-  const updatedUser = await User.findByIdAndUpdate(
-    req.user.id,
-    updateFields,
-    { new: true }
-  ).select("-password");
-  res.json(updatedUser);
+  try {
+    const {
+      name,
+      email,
+      dob,
+      gender,
+      college,
+      year,
+      department,
+      rollNumber,
+      phoneNumber,
+      socialProfiles,
+      codingProfiles,
+      skills
+    } = req.body;
+
+    const updateFields = {};
+
+    if (name !== undefined) updateFields.name = name;
+    if (email !== undefined) updateFields.email = email;
+    if (dob !== undefined) updateFields.dob = dob;
+    if (gender !== undefined) updateFields.gender = gender;
+    if (college !== undefined) updateFields.college = college;
+    if (year !== undefined) updateFields.year = year;
+    if (department !== undefined) updateFields.department = department;
+    if (rollNumber !== undefined) updateFields.rollNumber = rollNumber;
+    if (phoneNumber !== undefined) updateFields.phoneNumber = phoneNumber;
+
+    if (socialProfiles !== undefined)
+      updateFields.socialProfiles = socialProfiles;
+
+    if (codingProfiles !== undefined)
+      updateFields.codingProfiles = codingProfiles;
+
+    if (skills !== undefined)
+      updateFields.skills = skills; // must be array → your frontend already sends array
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ 
+      message: "Failed to update profile", 
+      error: error.message 
+    });
+  }
 });
+
 
 // Profile Pic Upload - POST /api/profile/upload-pic
 const storage = multer.diskStorage({

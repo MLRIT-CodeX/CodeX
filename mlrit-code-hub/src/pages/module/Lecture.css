@@ -160,6 +160,8 @@ Goal: Beautiful, readable, and immersive
   padding: 1.2rem 1.5rem;
   background: #212633;
   cursor: pointer;
+  margin: 0 !important;
+  height: 60px;
   transition: background 0.3s;
 }
 
@@ -186,17 +188,16 @@ Goal: Beautiful, readable, and immersive
 .section-title-area {
   display: flex;
   flex-direction: column;
+  height: 40px;
+  justify-content: center !important;
 }
 
 .section-title {
   font-size: 1.05rem;
   font-weight: 600;
+  padding: 0 !important;
+  margin: 0 !important;
   color: #f1f5f9;
-}
-
-.section-number {
-  color: #94a3b8;
-  font-size: 0.85rem;
 }
 
 .section-controls {
@@ -282,7 +283,8 @@ Goal: Beautiful, readable, and immersive
   font-size: 1.3rem;
   color: #e0e7ff;
   font-weight: 600;
-  margin-bottom: 1.2rem;
+  margin-top: 0 !important;
+  margin-bottom: 1rem;
 }
 
 .code-examples-grid {

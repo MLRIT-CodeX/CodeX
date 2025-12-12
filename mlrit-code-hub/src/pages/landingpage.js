@@ -146,10 +146,8 @@ const LandingPage = () => {
                     <span className="bracket"> {" {"}</span>
                   </div>
                   <div className="code-line indent-2">
-                    <span className="class-name">System</span>
-                    <span className="dot">.</span>
-                    <span className="property">out</span>
-                    <span className="dot">.</span>
+                    <span className="class-name">System.</span>
+                    <span className="property">out.</span>
                     <span className="method-name">println</span>
                     <span className="bracket">(</span>
                     <span className="string">"Success!"</span>
@@ -172,16 +170,6 @@ const LandingPage = () => {
       {/* Features Section */}
       <section id="features" className="features-section">
         <div className="container">
-          <div className="section-header">
-            <h2 className="section-title">
-              Powerful Features for{" "}
-              <span className="gradient-text">Modern Coders</span>
-            </h2>
-            <p className="section-description">
-              MLRIT Code Hub provides everything you need to learn, practice, and excel in
-              competitive programming within your campus ecosystem.
-            </p>
-          </div>
 
           <div className="features-grid">
             <div className="feature-card">

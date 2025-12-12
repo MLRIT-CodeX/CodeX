@@ -456,6 +456,41 @@ router.delete("/:id/unenroll", authenticateToken, async (req, res) => {
 });
 
 /* ================================
+   ✅ Update Entire Course (Admin)
+================================ */
+router.put("/:id", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { title, description, difficulty, isActive, testUnlockThreshold, modules, finalExam, scoringConfig } = req.body;
+
+    const updateData = {
+      title: title?.trim(),
+      description: description?.trim(),
+      difficulty: difficulty?.toLowerCase(),
+      isActive: isActive !== undefined ? isActive : true,
+      testUnlockThreshold: testUnlockThreshold || 80,
+      modules: modules || [],
+      finalExam: finalExam || null,
+      scoringConfig: scoringConfig || {}
+    };
+
+    const updated = await Course.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error("❌ Error updating course:", err);
+    res.status(500).json({ message: err.message, error: err.toString() });
+  }
+});
+
+/* ================================
    🗑 Delete Course (Admin)
 ================================ */
 router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {

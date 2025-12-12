@@ -324,20 +324,11 @@ leading educational platforms like Coursera & HackerRank
   line-height: 1.5;
   overflow-x: auto;
   position: relative;
-}
-
-.code-block::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: black;
+  color: white !important; 
 }
 
 .code-block code {
-  color: white !important;
+  color: white; 
   background: none;
   padding: 0;
   font-family: inherit;
@@ -345,7 +336,7 @@ leading educational platforms like Coursera & HackerRank
 
 .inline-code {
   background: var(--bg-code);
-  color: var(--text-primary);
+  color: white !important;
   padding: 2px 6px;
   border-radius: 4px;
   font-family: var(--font-mono);

@@ -31,7 +31,7 @@ html {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 80%;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -389,6 +389,12 @@ html {
 .dot { color: var(--text-secondary); }
 .property { color: var(--mlrit-purple-light); }
 
+.dot {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
 /* Animations */
 
 @keyframes fadeIn {

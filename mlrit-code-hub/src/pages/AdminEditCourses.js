@@ -1,48 +1,26 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import Modal from "react-modal";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { 
+  Plus, Trash2, ChevronDown, ChevronUp, Save, X, ArrowLeft,
+  BookOpen, Code, FileText, Award, Settings, Edit, Upload, Download,
+  Eye, Lock, Monitor, Copy, MousePointer, Maximize
+} from "lucide-react";
 import "./AdminEditCourses.css";
 
-Modal.setAppElement("#root");
-
 const AdminEditCourses = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [isEditingFullScreen, setIsEditingFullScreen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [editingMode, setEditingMode] = useState("basic"); // "basic", "topics", "finalTest"
-  const [newTopic, setNewTopic] = useState({
-    title: "",
-    description: "",
-    order: 0
-  });
-  const [newLesson, setNewLesson] = useState({
-    title: "",
-    type: "theory",
-    duration: 30,
-    order: 0,
-    content: "",
-    review: ""
-  });
-  const [newMCQ, setNewMCQ] = useState({
-    question: "",
-    options: ["", "", "", ""],
-    correct: 0,
-    explanation: ""
-  });
-  const [newCodeChallenge, setNewCodeChallenge] = useState({
-    title: "",
-    description: "",
-    sampleInput: "",
-    sampleOutput: "",
-    constraints: "",
-    initialCode: "",
-    language: "javascript"
-  });
+  const [editingMode, setEditingMode] = useState("basic");
+  const [expandedModules, setExpandedModules] = useState([]);
+  const [expandedLectures, setExpandedLectures] = useState({});
+  
   const coursesPerPage = 5;
   const token = localStorage.getItem("token");
 
@@ -88,304 +66,337 @@ const AdminEditCourses = () => {
   };
 
   const openEditModal = (course) => {
-    setSelectedCourse({ ...course });
-    setModalIsOpen(true);
+    setSelectedCourse({ 
+      ...course,
+      modules: course.modules || [],
+      finalExam: course.finalExam || {
+        title: "Final Course Assessment",
+        duration: 120,
+        totalMarks: 1000,
+        passingScore: 70,
+        isActive: false,
+        isSecure: false,
+        securitySettings: {
+          preventCopyPaste: false,
+          preventTabSwitch: false,
+          preventRightClick: false,
+          fullScreenRequired: false,
+          webcamMonitoring: false
+        },
+        mcqs: [],
+        codeChallenges: []
+      },
+      scoringConfig: course.scoringConfig || {
+        mcqMarks: 10,
+        codingMarks: 50,
+        lessonMcqMarks: 5,
+        lessonCodingMarks: 25,
+        moduleTestMcqMarks: 15,
+        moduleTestCodingMarks: 75,
+        finalExamMcqMarks: 20,
+        finalExamCodingMarks: 100
+      }
+    });
+    setExpandedModules([]);
+    setExpandedLectures({});
+    setIsEditingFullScreen(true);
   };
 
   const closeModal = () => {
-    setModalIsOpen(false);
+    setIsEditingFullScreen(false);
     setSelectedCourse(null);
     setIsUpdating(false);
+    setEditingMode("basic");
+    setExpandedModules([]);
+    setExpandedLectures({});
+  };
+
+  // Import course from JSON
+  const importCourse = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      if (!e.target || !(e.target instanceof HTMLInputElement)) return;
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const result = event.target.result;
+          if (typeof result === 'string') {
+            const courseData = JSON.parse(result);
+            
+            // Remove _id to create new course
+            delete courseData._id;
+            delete courseData.__v;
+            delete courseData.createdAt;
+            delete courseData.updatedAt;
+
+            const response = await axios.post(
+              'http://localhost:5000/api/courses',
+              courseData,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            Swal.fire("Success", "Course imported successfully!", "success");
+            fetchCourses();
+          }
+        } catch (error) {
+          console.error("Import error:", error);
+          Swal.fire("Error", "Failed to import course. Please check the file format.", "error");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  // Export course as JSON
+  const exportCourse = (course) => {
+    const dataStr = JSON.stringify(course, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${course.title.replace(/\s+/g, '_')}_course.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setIsUpdating(true);
     
-    // Validate required fields
     if (!selectedCourse.title || !selectedCourse.description) {
       Swal.fire("Error", "Title and description are required.", "error");
       setIsUpdating(false);
       return;
     }
 
+    if (!selectedCourse._id) {
+      Swal.fire("Error", "Course ID is missing. Please close and reopen the editor.", "error");
+      setIsUpdating(false);
+      return;
+    }
+
     try {
-      let updateResponse;
+      const courseData = {
+        title: selectedCourse.title.trim(),
+        description: selectedCourse.description.trim(),
+        difficulty: selectedCourse.difficulty || "medium",
+        isActive: selectedCourse.isActive !== undefined ? selectedCourse.isActive : true,
+        testUnlockThreshold: selectedCourse.testUnlockThreshold || 80,
+        modules: selectedCourse.modules || [],
+        finalExam: selectedCourse.finalExam,
+        scoringConfig: selectedCourse.scoringConfig
+      };
 
-      if (editingMode === "basic") {
-        // Update basic course information only
-        const basicCourseData = {
-          title: selectedCourse.title.trim(),
-          description: selectedCourse.description.trim(),
-          difficulty: selectedCourse.difficulty || "Easy"
-        };
+      console.log("Updating course with ID:", selectedCourse._id);
+      console.log("Course data:", courseData);
 
-        console.log('Updating basic course data:', basicCourseData);
-        console.log('Course ID:', selectedCourse._id);
-        console.log('Token:', token ? 'Present' : 'Missing');
-        updateResponse = await axios.patch(`http://localhost:5000/api/courses/${selectedCourse._id}/basic`, basicCourseData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        // Update full course with all topics, lessons, tests, etc.
-        const fullCourseData = {
-          title: selectedCourse.title.trim(),
-          description: selectedCourse.description.trim(),
-          difficulty: selectedCourse.difficulty || "Easy",
-          topics: selectedCourse.topics || [],
-          finalTest: selectedCourse.finalTest || null
-        };
+      const response = await axios.put(
+        `http://localhost:5000/api/courses/${selectedCourse._id}`, 
+        courseData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-        console.log('Updating full course data:', fullCourseData);
-        updateResponse = await axios.put(`http://localhost:5000/api/courses/${selectedCourse._id}`, fullCourseData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-
-      console.log('Update response:', updateResponse.data);
       Swal.fire("Success", "Course updated successfully!", "success");
       fetchCourses();
       closeModal();
     } catch (error) {
       console.error("Error updating course:", error);
-      let errorMessage = "Failed to update the course.";
-      
-      if (error.response) {
-        // Server responded with error
-        console.error("Server error details:", error.response.data);
-        
-        if (error.response.data?.errors && Array.isArray(error.response.data.errors)) {
-          // Handle validation errors
-          const validationErrors = error.response.data.errors.map(err => `${err.param}: ${err.msg}`).join(', ');
-          errorMessage = `Validation errors: ${validationErrors}`;
-        } else {
-          errorMessage = error.response.data?.message || error.response.data?.error || errorMessage;
-        }
-      } else if (error.request) {
-        // Network error
-        errorMessage = "Network error. Please check your connection.";
-        console.error("Network error:", error.request);
-      } else {
-        // Other error
-        errorMessage = error.message || errorMessage;
-        console.error("Other error:", error);
-      }
-      
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          "Failed to update the course.";
       Swal.fire("Error", errorMessage, "error");
       setIsUpdating(false);
     }
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setSelectedCourse((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setSelectedCourse((prev) => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
-  const handleTopicChange = (e, index, field) => {
-    const updated = [...(selectedCourse.topics || [])];
-    updated[index][field] = e.target.value;
-    setSelectedCourse((prev) => ({ ...prev, topics: updated }));
+  const toggleModuleExpansion = (index) => {
+    setExpandedModules(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
   };
 
-
-
-  const removeTopic = (index) => {
-    const updated = selectedCourse.topics.filter((_, i) => i !== index);
-    setSelectedCourse((prev) => ({ ...prev, topics: updated }));
+  const toggleLectureExpansion = (moduleIndex, lectureIndex) => {
+    const key = `${moduleIndex}-${lectureIndex}`;
+    setExpandedLectures(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
-  // Topic Management Functions
-  const addTopic = () => {
-    if (!newTopic.title || !newTopic.description) {
-      Swal.fire("Error", "Topic title and description are required.", "error");
-      return;
-    }
-
-    const topicToAdd = {
-      ...newTopic,
-      _id: Date.now().toString(), // Temporary ID
-      lessons: [],
-      moduleTest: null
+  // Module Management
+  const addModule = () => {
+    const newModule = {
+      module: `Module ${(selectedCourse.modules?.length || 0) + 1}`,
+      theory: { textContent: "" },
+      snippets: { codeExamples: [] },
+      lectures: [],
+      mcqs: [],
+      codeChallenges: [],
+      moduleTest: {
+        totalMarks: 100,
+        mcqs: [],
+        codeChallenges: []
+      }
     };
 
     setSelectedCourse(prev => ({
       ...prev,
-      topics: [...(prev.topics || []), topicToAdd]
+      modules: [...(prev.modules || []), newModule]
     }));
-
-    setNewTopic({ title: "", description: "", order: 0 });
   };
 
-  const deleteTopic = (topicIndex) => {
-    const updatedTopics = selectedCourse.topics.filter((_, index) => index !== topicIndex);
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
+  const removeModule = (index) => {
+    Swal.fire({
+      title: "Delete Module?",
+      text: "This will delete all content in this module!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const updated = selectedCourse.modules.filter((_, i) => i !== index);
+        setSelectedCourse(prev => ({ ...prev, modules: updated }));
+      }
+    });
   };
 
-  const updateTopic = (topicIndex, field, value) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex] = { ...updatedTopics[topicIndex], [field]: value };
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-  };
-
-  // Lesson Management Functions
-  const addLesson = (topicIndex) => {
-    if (!newLesson.title || !newLesson.content) {
-      Swal.fire("Error", "Lesson title and content are required.", "error");
-      return;
+  const updateModuleField = (index, field, value) => {
+    const updated = [...selectedCourse.modules];
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      updated[index] = {
+        ...updated[index],
+        [parent]: { ...updated[index][parent], [child]: value }
+      };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
     }
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
+  };
 
-    const lessonToAdd = {
-      ...newLesson,
-      _id: Date.now().toString(),
+  // Lecture Management
+  const addLecture = (moduleIndex) => {
+    const newLecture = {
+      title: `Lecture ${(selectedCourse.modules[moduleIndex].lectures?.length || 0) + 1}`,
+      content: "",
       mcqs: [],
       codeChallenges: []
     };
 
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons.push(lessonToAdd);
-    
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-    setNewLesson({ title: "", type: "theory", duration: 30, order: 0, content: "", review: "" });
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].lectures = [...(updated[moduleIndex].lectures || []), newLecture];
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  const deleteLesson = (topicIndex, lessonIndex) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons.splice(lessonIndex, 1);
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
+  const removeLecture = (moduleIndex, lectureIndex) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].lectures.splice(lectureIndex, 1);
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  const updateLesson = (topicIndex, lessonIndex, field, value) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex] = {
-      ...updatedTopics[topicIndex].lessons[lessonIndex],
+  const updateLectureField = (moduleIndex, lectureIndex, field, value) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].lectures[lectureIndex] = {
+      ...updated[moduleIndex].lectures[lectureIndex],
       [field]: value
     };
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  // MCQ Management Functions
-  const addMCQ = (topicIndex, lessonIndex) => {
-    if (!newMCQ.question || newMCQ.options.some(opt => !opt.trim())) {
-      Swal.fire("Error", "MCQ question and all options are required.", "error");
-      return;
+  // Code Example Management
+  const addCodeExample = (moduleIndex) => {
+    const updated = [...selectedCourse.modules];
+    if (!updated[moduleIndex].snippets) {
+      updated[moduleIndex].snippets = { codeExamples: [] };
     }
-
-    const mcqToAdd = { ...newMCQ, _id: Date.now().toString() };
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex].mcqs.push(mcqToAdd);
-    
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-    setNewMCQ({ question: "", options: ["", "", "", ""], correct: 0, explanation: "" });
+    updated[moduleIndex].snippets.codeExamples.push({
+      language: "javascript",
+      code: "",
+      explanation: ""
+    });
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  const deleteMCQ = (topicIndex, lessonIndex, mcqIndex) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex].mcqs.splice(mcqIndex, 1);
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
+  const removeCodeExample = (moduleIndex, exampleIndex) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].snippets.codeExamples.splice(exampleIndex, 1);
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  const updateMCQ = (topicIndex, lessonIndex, mcqIndex, field, value) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex].mcqs[mcqIndex] = {
-      ...updatedTopics[topicIndex].lessons[lessonIndex].mcqs[mcqIndex],
+  // MCQ Management (Module Level)
+  const addMCQToModule = (moduleIndex) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].mcqs = [...(updated[moduleIndex].mcqs || []), {
+      question: "",
+      options: ["", "", "", ""],
+      correct: 0,
+      explanation: "",
+      marks: 1,
+      difficulty: "medium"
+    }];
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
+  };
+
+  const removeMCQFromModule = (moduleIndex, mcqIndex) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].mcqs.splice(mcqIndex, 1);
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
+  };
+
+  const updateModuleMCQ = (moduleIndex, mcqIndex, field, value) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].mcqs[mcqIndex] = {
+      ...updated[moduleIndex].mcqs[mcqIndex],
       [field]: value
     };
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  // Code Challenge Management Functions
-  const addCodeChallenge = (topicIndex, lessonIndex) => {
-    if (!newCodeChallenge.title || !newCodeChallenge.description) {
-      Swal.fire("Error", "Code challenge title and description are required.", "error");
-      return;
-    }
-
-    const challengeToAdd = { ...newCodeChallenge, _id: Date.now().toString() };
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex].codeChallenges.push(challengeToAdd);
-    
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-    setNewCodeChallenge({
+  // Coding Challenge Management (Module Level)
+  const addCodingChallengeToModule = (moduleIndex) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].codeChallenges = [...(updated[moduleIndex].codeChallenges || []), {
       title: "",
       description: "",
       sampleInput: "",
       sampleOutput: "",
-      constraints: "",
-      initialCode: "",
-      language: "javascript"
-    });
+      language: "python",
+      marks: 2,
+      difficulty: "medium",
+      timeLimit: 30
+    }];
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  const deleteCodeChallenge = (topicIndex, lessonIndex, challengeIndex) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex].codeChallenges.splice(challengeIndex, 1);
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
+  const removeCodingChallengeFromModule = (moduleIndex, challengeIndex) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].codeChallenges.splice(challengeIndex, 1);
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
-  const updateCodeChallenge = (topicIndex, lessonIndex, challengeIndex, field, value) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].lessons[lessonIndex].codeChallenges[challengeIndex] = {
-      ...updatedTopics[topicIndex].lessons[lessonIndex].codeChallenges[challengeIndex],
+  const updateModuleCodingChallenge = (moduleIndex, challengeIndex, field, value) => {
+    const updated = [...selectedCourse.modules];
+    updated[moduleIndex].codeChallenges[challengeIndex] = {
+      ...updated[moduleIndex].codeChallenges[challengeIndex],
       [field]: value
     };
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-  };
-
-  // Module Test Management Functions
-  const addModuleTest = (topicIndex) => {
-    const moduleTest = {
-      _id: Date.now().toString(),
-      totalMarks: 100,
-      mcqs: [],
-      codeChallenges: []
-    };
-
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].moduleTest = moduleTest;
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-  };
-
-  const deleteModuleTest = (topicIndex) => {
-    const updatedTopics = [...selectedCourse.topics];
-    updatedTopics[topicIndex].moduleTest = null;
-    setSelectedCourse(prev => ({ ...prev, topics: updatedTopics }));
-  };
-
-  // Final Test Management Functions
-  const addFinalTest = () => {
-    const finalTest = {
-      _id: Date.now().toString(),
-      totalMarks: 200,
-      mcqs: [],
-      codeChallenges: []
-    };
-
-    setSelectedCourse(prev => ({ ...prev, finalTest }));
-  };
-
-  const deleteFinalTest = () => {
-    setSelectedCourse(prev => ({ ...prev, finalTest: null }));
-  };
-
-  // Input Change Handlers for New Items
-  const handleNewTopicChange = (field, value) => {
-    setNewTopic(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleNewLessonChange = (field, value) => {
-    setNewLesson(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleNewMCQChange = (field, value) => {
-    if (field === 'options') {
-      setNewMCQ(prev => ({ ...prev, options: value }));
-    } else {
-      setNewMCQ(prev => ({ ...prev, [field]: value }));
-    }
-  };
-
-  const handleNewCodeChallengeChange = (field, value) => {
-    setNewCodeChallenge(prev => ({ ...prev, [field]: value }));
+    setSelectedCourse(prev => ({ ...prev, modules: updated }));
   };
 
   const filteredCourses = courses.filter((course) =>
@@ -406,6 +417,8 @@ const AdminEditCourses = () => {
   };
 
   return (
+    <>
+    {!isEditingFullScreen ? (
     <div className="admin-container">
       <h1 className="admin-heading">Manage Courses</h1>
       
@@ -417,9 +430,16 @@ const AdminEditCourses = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-bar"
         />
-        <Link to="/admin/create-course" className="add-course-btn">
-          + Add New Course
-        </Link>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={importCourse} className="import-btn">
+            <Upload size={18} style={{ marginRight: '8px' }} />
+            Import Course
+          </button>
+          <Link to="/admin/create-course" className="add-course-btn">
+            <Plus size={18} style={{ marginRight: '8px' }} />
+            Add New Course
+          </Link>
+        </div>
       </div>
 
       <div className="courses-list">
@@ -430,21 +450,39 @@ const AdminEditCourses = () => {
                 <h2>{course.title}</h2>
                 <p>{course.description}</p>
                 <div className="course-meta">
-                  <span className="difficulty-badge">{course.difficulty}</span>
-                  <span className="topics-count">{course.topics?.length || 0} topics</span>
+                  <span className={`difficulty-badge difficulty-${course.difficulty?.toLowerCase()}`}>
+                    {course.difficulty}
+                  </span>
+                  <span className="modules-count">
+                    <BookOpen size={16} />
+                    {course.modules?.length || 0} modules
+                  </span>
+                  <span className={`status-badge ${course.isActive ? 'active' : 'inactive'}`}>
+                    {course.isActive ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
               </div>
               <div className="course-buttons">
                 <button
+                  onClick={() => exportCourse(course)}
+                  className="export-btn"
+                  title="Export course as JSON"
+                >
+                  <Download size={16} />
+                  Export
+                </button>
+                <button
                   onClick={() => openEditModal(course)}
                   className="edit-btn"
                 >
+                  <Edit size={16} />
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(course._id)}
                   className="delete-btn"
                 >
+                  <Trash2 size={16} />
                   Delete
                 </button>
               </div>
@@ -472,620 +510,736 @@ const AdminEditCourses = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
-      <Modal
-        isOpen={modalIsOpen}
-        onRequestClose={closeModal}
-        className="modal"
-        overlayClassName="overlay"
-        style={{ content: { maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' } }}
-      >
-        <div style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2>Edit Course: {selectedCourse?.title}</h2>
-            <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#94a3b8' }}>×</button>
+    </div>
+    ) : null}
+
+      {/* Full Screen Editor */}
+      {isEditingFullScreen && selectedCourse && (
+        <div className="fullscreen-editor">
+          <div className="editor-header">
+            <div className="editor-header-left">
+              <button onClick={closeModal} className="back-btn">
+                <ArrowLeft size={20} />
+                Back to Courses
+              </button>
+              <h2 className="editor-title">Edit Course: {selectedCourse?.title}</h2>
+            </div>
+            <div className="editor-header-right">
+              <span className="save-indicator">
+                {isUpdating ? "Saving..." : "Ready"}
+              </span>
+            </div>
           </div>
 
-          {/* Editing Mode Tabs */}
-          <div style={{ display: 'flex', marginBottom: '20px', borderBottom: '1px solid #374151' }}>
-            <button
-              onClick={() => setEditingMode("basic")}
-              style={{
-                padding: '10px 20px',
-                background: editingMode === "basic" ? '#8A00C4' : 'transparent',
-                border: 'none',
-                color: editingMode === "basic" ? 'white' : '#94a3b8',
-                cursor: 'pointer',
-                borderBottom: editingMode === "basic" ? '2px solid #8A00C4' : 'none'
-              }}
-            >
-              Basic Info
-            </button>
-            <button
-              onClick={() => setEditingMode("topics")}
-              style={{
-                padding: '10px 20px',
-                background: editingMode === "topics" ? '#8A00C4' : 'transparent',
-                border: 'none',
-                color: editingMode === "topics" ? 'white' : '#94a3b8',
-                cursor: 'pointer',
-                borderBottom: editingMode === "topics" ? '2px solid #8A00C4' : 'none'
-              }}
-            >
-              Topics & Lessons
-            </button>
-            <button
-              onClick={() => setEditingMode("finalTest")}
-              style={{
-                padding: '10px 20px',
-                background: editingMode === "finalTest" ? '#8A00C4' : 'transparent',
-                border: 'none',
-                color: editingMode === "finalTest" ? 'white' : '#94a3b8',
-                cursor: 'pointer',
-                borderBottom: editingMode === "finalTest" ? '2px solid #8A00C4' : 'none'
-              }}
-            >
-              Final Test
-            </button>
-          </div>
-
-          <form onSubmit={handleUpdate}>
-            {/* Basic Info Tab */}
-            {editingMode === "basic" && (
-              <div>
-                <div className="form-group">
-                  <label>Course Title</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={selectedCourse?.title || ""}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea
-                    name="description"
-                    value={selectedCourse?.description || ""}
-                    onChange={handleInputChange}
-                    required
-                    rows={4}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Difficulty</label>
-                                     <select
-                     name="difficulty"
-                     value={selectedCourse?.difficulty || "Easy"}
-                     onChange={handleInputChange}
-                   >
-                     <option value="Easy">Easy</option>
-                     <option value="Medium">Medium</option>
-                     <option value="Hard">Hard</option>
-                   </select>
-                </div>
+          <div className="editor-content">
+            {/* Editing Mode Tabs */}
+            <div className="tabs-navigation">
+                <button
+                  type="button"
+                  onClick={() => setEditingMode("basic")}
+                  className={`tab-button ${editingMode === "basic" ? "active" : ""}`}
+                >
+                  <FileText size={16} />
+                  Basic Info
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingMode("modules")}
+                  className={`tab-button ${editingMode === "modules" ? "active" : ""}`}
+                >
+                  <BookOpen size={16} />
+                  Modules
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingMode("finalExam")}
+                  className={`tab-button ${editingMode === "finalExam" ? "active" : ""}`}
+                >
+                  <Award size={16} />
+                  Final Exam
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingMode("settings")}
+                  className={`tab-button ${editingMode === "settings" ? "active" : ""}`}
+                >
+                  <Settings size={16} />
+                  Settings
+                </button>
               </div>
-            )}
 
-            {/* Topics & Lessons Tab */}
-            {editingMode === "topics" && (
-              <div>
-                {/* Add New Topic */}
-                <div style={{ marginBottom: '30px', padding: '20px', backgroundColor: 'rgba(138, 0, 196, 0.1)', borderRadius: '8px' }}>
-                  <h3 style={{ color: '#8A00C4', marginBottom: '15px' }}>Add New Topic</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <input
-                      type="text"
-                      placeholder="Topic Title"
-                      value={newTopic.title}
-                      onChange={(e) => handleNewTopicChange('title', e.target.value)}
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white' }}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Order"
-                      value={newTopic.order}
-                      onChange={(e) => handleNewTopicChange('order', parseInt(e.target.value))}
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white' }}
-                    />
-                  </div>
-                  <textarea
-                    placeholder="Topic Description"
-                    value={newTopic.description}
-                    onChange={(e) => handleNewTopicChange('description', e.target.value)}
-                    style={{ width: '100%', marginTop: '15px', padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '80px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addTopic}
-                    style={{ marginTop: '15px', padding: '10px 20px', backgroundColor: '#8A00C4', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                  >
-                    Add Topic
-                  </button>
-                </div>
-
-                {/* Existing Topics */}
-                {selectedCourse?.topics?.map((topic, topicIndex) => (
-                  <div key={topic._id || topicIndex} style={{ marginBottom: '30px', padding: '20px', backgroundColor: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                      <h3 style={{ color: '#8A00C4' }}>Topic {topicIndex + 1}: {topic.title}</h3>
-                      <button
-                        type="button"
-                        onClick={() => deleteTopic(topicIndex)}
-                        style={{ padding: '5px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        Delete Topic
-                      </button>
-                    </div>
-
-                    {/* Topic Details */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <form onSubmit={handleUpdate} className="editor-form">
+                {/* Basic Info Tab */}
+                {editingMode === "basic" && (
+                  <div>
+                    <div className="form-group">
+                      <label>Course Title</label>
                       <input
                         type="text"
-                        placeholder="Topic Title"
-                        value={topic.title}
-                        onChange={(e) => updateTopic(topicIndex, 'title', e.target.value)}
-                        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white' }}
+                        name="title"
+                        value={selectedCourse?.title || ""}
+                        onChange={handleInputChange}
+                        required
                       />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Description</label>
+                      <textarea
+                        name="description"
+                        value={selectedCourse?.description || ""}
+                        onChange={handleInputChange}
+                        required
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Difficulty</label>
+                      <select
+                        name="difficulty"
+                        value={selectedCourse?.difficulty || "medium"}
+                        onChange={handleInputChange}
+                      >
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Course Status</label>
+                      <div className="toggle-container">
+                        <label className="toggle-switch">
+                          <input
+                            type="checkbox"
+                            name="isActive"
+                            checked={selectedCourse?.isActive !== undefined ? selectedCourse.isActive : true}
+                            onChange={handleInputChange}
+                          />
+                          <span className="toggle-slider"></span>
+                        </label>
+                        <span className="toggle-label">
+                          {selectedCourse?.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Test Unlock Threshold (%)</label>
                       <input
                         type="number"
-                        placeholder="Order"
-                        value={topic.order}
-                        onChange={(e) => updateTopic(topicIndex, 'order', parseInt(e.target.value))}
-                        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white' }}
+                        name="testUnlockThreshold"
+                        value={selectedCourse?.testUnlockThreshold || 80}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="100"
                       />
+                      <small style={{ color: '#94a3b8', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                        Minimum percentage required to unlock module tests
+                      </small>
                     </div>
-                    <textarea
-                      placeholder="Topic Description"
-                      value={topic.description}
-                      onChange={(e) => updateTopic(topicIndex, 'description', e.target.value)}
-                      style={{ width: '100%', marginBottom: '20px', padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '60px' }}
-                    />
+                  </div>
+                )}
 
-                    {/* Module Test Management */}
-                    <div style={{ marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ color: '#f59e0b' }}>Module Test</h4>
-                        {topic.moduleTest ? (
-                          <button
-                            type="button"
-                            onClick={() => deleteModuleTest(topicIndex)}
-                            style={{ padding: '5px 10px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                          >
-                            Delete Module Test
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => addModuleTest(topicIndex)}
-                            style={{ padding: '5px 10px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                          >
-                            Add Module Test
-                          </button>
-                        )}
-                      </div>
-                      {topic.moduleTest && (
-                        <div style={{ padding: '15px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '6px', marginTop: '10px' }}>
-                          <p style={{ color: '#f59e0b' }}>Module Test exists with {topic.moduleTest.mcqs?.length || 0} MCQs and {topic.moduleTest.codeChallenges?.length || 0} code challenges</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Add New Lesson */}
-                    <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px' }}>
-                      <h4 style={{ color: '#3b82f6', marginBottom: '10px' }}>Add New Lesson</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                        <input
-                          type="text"
-                          placeholder="Lesson Title"
-                          value={newLesson.title}
-                          onChange={(e) => handleNewLessonChange('title', e.target.value)}
-                          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white' }}
-                        />
-                        <select
-                          value={newLesson.type}
-                          onChange={(e) => handleNewLessonChange('type', e.target.value)}
-                          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white' }}
-                        >
-                          <option value="theory">Theory</option>
-                          <option value="practical">Practical</option>
-                          <option value="quiz">Quiz</option>
-                        </select>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                        <input
-                          type="number"
-                          placeholder="Duration (minutes)"
-                          value={newLesson.duration}
-                          onChange={(e) => handleNewLessonChange('duration', parseInt(e.target.value))}
-                          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white' }}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Order"
-                          value={newLesson.order}
-                          onChange={(e) => handleNewLessonChange('order', parseInt(e.target.value))}
-                          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white' }}
-                        />
-                      </div>
-                      <textarea
-                        placeholder="Lesson Content"
-                        value={newLesson.content}
-                        onChange={(e) => handleNewLessonChange('content', e.target.value)}
-                        style={{ width: '100%', marginBottom: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '60px' }}
-                      />
-                      <textarea
-                        placeholder="Lesson Review"
-                        value={newLesson.review}
-                        onChange={(e) => handleNewLessonChange('review', e.target.value)}
-                        style={{ width: '100%', marginBottom: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '60px' }}
-                      />
+                {/* Modules Tab */}
+                {editingMode === "modules" && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h3 style={{ color: '#8A00C4' }}>Course Modules</h3>
                       <button
                         type="button"
-                        onClick={() => addLesson(topicIndex)}
-                        style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={addModule}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#8A00C4',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
                       >
-                        Add Lesson
+                        <Plus size={16} />
+                        Add Module
                       </button>
                     </div>
 
-                    {/* Existing Lessons */}
-                    {topic.lessons?.map((lesson, lessonIndex) => (
-                      <div key={lesson._id || lessonIndex} style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#111827', borderRadius: '6px', border: '1px solid #374151' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <h5 style={{ color: '#3b82f6' }}>Lesson {lessonIndex + 1}: {lesson.title}</h5>
-                          <button
-                            type="button"
-                            onClick={() => deleteLesson(topicIndex, lessonIndex)}
-                            style={{ padding: '3px 8px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
-                          >
-                            Delete
-                          </button>
-                        </div>
+                    {selectedCourse?.modules?.length === 0 && (
+                      <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                        <BookOpen size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+                        <p>No modules yet. Click "Add Module" to get started.</p>
+                      </div>
+                    )}
 
-                        {/* Lesson Details */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                          <input
-                            type="text"
-                            placeholder="Lesson Title"
-                            value={lesson.title}
-                            onChange={(e) => updateLesson(topicIndex, lessonIndex, 'title', e.target.value)}
-                            style={{ padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                          />
-                          <select
-                            value={lesson.type}
-                            onChange={(e) => updateLesson(topicIndex, lessonIndex, 'type', e.target.value)}
-                            style={{ padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                          >
-                            <option value="theory">Theory</option>
-                            <option value="practical">Practical</option>
-                            <option value="quiz">Quiz</option>
-                          </select>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                          <input
-                            type="number"
-                            placeholder="Duration"
-                            value={lesson.duration}
-                            onChange={(e) => updateLesson(topicIndex, lessonIndex, 'duration', parseInt(e.target.value))}
-                            style={{ padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                          />
-                          <input
-                            type="number"
-                            placeholder="Order"
-                            value={lesson.order}
-                            onChange={(e) => updateLesson(topicIndex, lessonIndex, 'order', parseInt(e.target.value))}
-                            style={{ padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                          />
-                        </div>
-                        <textarea
-                          placeholder="Content"
-                          value={lesson.content}
-                          onChange={(e) => updateLesson(topicIndex, lessonIndex, 'content', e.target.value)}
-                          style={{ width: '100%', marginBottom: '10px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '50px', fontSize: '14px' }}
-                        />
-                        <textarea
-                          placeholder="Review"
-                          value={lesson.review}
-                          onChange={(e) => updateLesson(topicIndex, lessonIndex, 'review', e.target.value)}
-                          style={{ width: '100%', marginBottom: '10px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '50px', fontSize: '14px' }}
-                        />
-
-                        {/* MCQs Section */}
-                        <div style={{ marginBottom: '15px' }}>
-                          <h6 style={{ color: '#10b981', marginBottom: '8px' }}>MCQs ({lesson.mcqs?.length || 0})</h6>
-                          
-                          {/* Add New MCQ */}
-                          <div style={{ padding: '10px', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '4px', marginBottom: '10px' }}>
+                    {selectedCourse?.modules?.map((module, moduleIndex) => (
+                      <div key={moduleIndex} style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                          <div style={{ flex: 1, marginRight: '15px' }}>
                             <input
                               type="text"
-                              placeholder="MCQ Question"
-                              value={newMCQ.question}
-                              onChange={(e) => handleNewMCQChange('question', e.target.value)}
-                              style={{ width: '100%', marginBottom: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
+                              value={module.module}
+                              onChange={(e) => updateModuleField(moduleIndex, 'module', e.target.value)}
+                              style={{ 
+                                width: '100%',
+                                padding: '8px',
+                                fontSize: '16px',
+                                fontWeight: 'bold',
+                                backgroundColor: '#111827',
+                                border: '1px solid #374151',
+                                borderRadius: '4px',
+                                color: 'white'
+                              }}
+                              placeholder="Module Name"
                             />
-                            {newMCQ.options.map((option, optionIndex) => (
-                              <div key={optionIndex} style={{ display: 'flex', alignItems: 'center', marginBottom: '5px' }}>
-                                <input
-                                  type="radio"
-                                  name="correct"
-                                  checked={newMCQ.correct === optionIndex}
-                                  onChange={() => handleNewMCQChange('correct', optionIndex)}
-                                  style={{ marginRight: '8px' }}
-                                />
-                                <input
-                                  type="text"
-                                  placeholder={`Option ${optionIndex + 1}`}
-                                  value={option}
-                                  onChange={(e) => {
-                                    const newOptions = [...newMCQ.options];
-                                    newOptions[optionIndex] = e.target.value;
-                                    handleNewMCQChange('options', newOptions);
-                                  }}
-                                  style={{ flex: 1, padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                                />
-                              </div>
-                            ))}
-                            <textarea
-                              placeholder="Explanation"
-                              value={newMCQ.explanation}
-                              onChange={(e) => handleNewMCQChange('explanation', e.target.value)}
-                              style={{ width: '100%', marginTop: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '40px', fontSize: '14px' }}
-                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               type="button"
-                              onClick={() => addMCQ(topicIndex, lessonIndex)}
-                              style={{ marginTop: '8px', padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
+                              onClick={() => toggleModuleExpansion(moduleIndex)}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#374151',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
                             >
-                              Add MCQ
+                              {expandedModules.includes(moduleIndex) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeModule(moduleIndex)}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#dc2626',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Trash2 size={16} />
                             </button>
                           </div>
+                        </div>
 
-                          {/* Existing MCQs */}
-                          {lesson.mcqs?.map((mcq, mcqIndex) => (
-                            <div key={mcq._id || mcqIndex} style={{ padding: '8px', backgroundColor: '#1f2937', borderRadius: '4px', marginBottom: '8px', border: '1px solid #374151' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                <span style={{ color: '#10b981', fontSize: '14px' }}>MCQ {mcqIndex + 1}</span>
+                        {expandedModules.includes(moduleIndex) && (
+                          <div>
+                            {/* Theory Content */}
+                            <div style={{ marginBottom: '15px' }}>
+                              <label style={{ display: 'block', marginBottom: '8px', color: '#e5e7eb', fontSize: '14px', fontWeight: '500' }}>
+                                Theory Content
+                              </label>
+                              <textarea
+                                value={module.theory?.textContent || ""}
+                                onChange={(e) => updateModuleField(moduleIndex, 'theory.textContent', e.target.value)}
+                                placeholder="Enter theory content for this module..."
+                                style={{
+                                  width: '100%',
+                                  minHeight: '100px',
+                                  padding: '10px',
+                                  backgroundColor: '#111827',
+                                  border: '1px solid #374151',
+                                  borderRadius: '4px',
+                                  color: 'white',
+                                  resize: 'vertical'
+                                }}
+                              />
+                            </div>
+
+                            {/* Lectures */}
+                            <div style={{ marginBottom: '15px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <label style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: '500' }}>
+                                  Lectures ({module.lectures?.length || 0})
+                                </label>
                                 <button
                                   type="button"
-                                  onClick={() => deleteMCQ(topicIndex, lessonIndex, mcqIndex)}
-                                  style={{ padding: '2px 6px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontSize: '11px' }}
+                                  onClick={() => addLecture(moduleIndex)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
                                 >
-                                  Delete
+                                  <Plus size={14} />
+                                  Add Lecture
                                 </button>
                               </div>
-                              <input
-                                type="text"
-                                placeholder="Question"
-                                value={mcq.question}
-                                onChange={(e) => updateMCQ(topicIndex, lessonIndex, mcqIndex, 'question', e.target.value)}
-                                style={{ width: '100%', marginBottom: '5px', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', fontSize: '13px' }}
-                              />
-                              {mcq.options?.map((option, optionIndex) => (
-                                <div key={optionIndex} style={{ display: 'flex', alignItems: 'center', marginBottom: '3px' }}>
-                                  <input
-                                    type="radio"
-                                    name={`correct-${mcqIndex}`}
-                                    checked={mcq.correct === optionIndex}
-                                    onChange={() => updateMCQ(topicIndex, lessonIndex, mcqIndex, 'correct', optionIndex)}
-                                    style={{ marginRight: '6px' }}
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder={`Option ${optionIndex + 1}`}
-                                    value={option}
-                                    onChange={(e) => {
-                                      const newOptions = [...mcq.options];
-                                      newOptions[optionIndex] = e.target.value;
-                                      updateMCQ(topicIndex, lessonIndex, mcqIndex, 'options', newOptions);
+
+                              {module.lectures?.map((lecture, lectureIndex) => (
+                                <div key={lectureIndex} style={{ marginBottom: '10px', padding: '10px', backgroundColor: '#111827', borderRadius: '4px', border: '1px solid #374151' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <input
+                                      type="text"
+                                      value={lecture.title}
+                                      onChange={(e) => updateLectureField(moduleIndex, lectureIndex, 'title', e.target.value)}
+                                      placeholder="Lecture Title"
+                                      style={{
+                                        flex: 1,
+                                        padding: '6px',
+                                        backgroundColor: '#1f2937',
+                                        border: '1px solid #374151',
+                                        borderRadius: '3px',
+                                        color: 'white',
+                                        fontSize: '14px'
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeLecture(moduleIndex, lectureIndex)}
+                                      style={{
+                                        marginLeft: '8px',
+                                        padding: '4px 8px',
+                                        background: '#dc2626',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '3px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px'
+                                      }}
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                  <textarea
+                                    value={lecture.content}
+                                    onChange={(e) => updateLectureField(moduleIndex, lectureIndex, 'content', e.target.value)}
+                                    placeholder="Lecture Content"
+                                    style={{
+                                      width: '100%',
+                                      minHeight: '60px',
+                                      padding: '6px',
+                                      backgroundColor: '#1f2937',
+                                      border: '1px solid #374151',
+                                      borderRadius: '3px',
+                                      color: 'white',
+                                      fontSize: '13px',
+                                      resize: 'vertical'
                                     }}
-                                    style={{ flex: 1, padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', fontSize: '13px' }}
                                   />
                                 </div>
                               ))}
-                              <textarea
-                                placeholder="Explanation"
-                                value={mcq.explanation}
-                                onChange={(e) => updateMCQ(topicIndex, lessonIndex, mcqIndex, 'explanation', e.target.value)}
-                                style={{ width: '100%', marginTop: '5px', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '30px', fontSize: '13px' }}
-                              />
                             </div>
-                          ))}
-                        </div>
 
-                        {/* Code Challenges Section */}
-                        <div>
-                          <h6 style={{ color: '#f59e0b', marginBottom: '8px' }}>Code Challenges ({lesson.codeChallenges?.length || 0})</h6>
-                          
-                          {/* Add New Code Challenge */}
-                          <div style={{ padding: '10px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '4px', marginBottom: '10px' }}>
-                            <input
-                              type="text"
-                              placeholder="Challenge Title"
-                              value={newCodeChallenge.title}
-                              onChange={(e) => handleNewCodeChallengeChange('title', e.target.value)}
-                              style={{ width: '100%', marginBottom: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                            />
-                            <textarea
-                              placeholder="Challenge Description"
-                              value={newCodeChallenge.description}
-                              onChange={(e) => handleNewCodeChallengeChange('description', e.target.value)}
-                              style={{ width: '100%', marginBottom: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '40px', fontSize: '14px' }}
-                            />
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                              <input
-                                type="text"
-                                placeholder="Sample Input"
-                                value={newCodeChallenge.sampleInput}
-                                onChange={(e) => handleNewCodeChallengeChange('sampleInput', e.target.value)}
-                                style={{ padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                              />
-                              <input
-                                type="text"
-                                placeholder="Sample Output"
-                                value={newCodeChallenge.sampleOutput}
-                                onChange={(e) => handleNewCodeChallengeChange('sampleOutput', e.target.value)}
-                                style={{ padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                              />
+                            {/* Module Summary */}
+                            <div style={{ 
+                              padding: '10px', 
+                              backgroundColor: 'rgba(138, 0, 196, 0.1)', 
+                              borderRadius: '4px',
+                              display: 'flex',
+                              gap: '20px',
+                              fontSize: '13px',
+                              color: '#94a3b8'
+                            }}>
+                              <span>📝 {module.mcqs?.length || 0} MCQs</span>
+                              <span>💻 {module.codeChallenges?.length || 0} Challenges</span>
+                              <span>📚 {module.lectures?.length || 0} Lectures</span>
+                              <span>🧩 {module.snippets?.codeExamples?.length || 0} Code Examples</span>
                             </div>
-                            <textarea
-                              placeholder="Constraints"
-                              value={newCodeChallenge.constraints}
-                              onChange={(e) => handleNewCodeChallengeChange('constraints', e.target.value)}
-                              style={{ width: '100%', marginBottom: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '30px', fontSize: '14px' }}
-                            />
-                            <textarea
-                              placeholder="Initial Code"
-                              value={newCodeChallenge.initialCode}
-                              onChange={(e) => handleNewCodeChallengeChange('initialCode', e.target.value)}
-                              style={{ width: '100%', marginBottom: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', minHeight: '60px', fontSize: '14px' }}
-                            />
-                            <select
-                              value={newCodeChallenge.language}
-                              onChange={(e) => handleNewCodeChallengeChange('language', e.target.value)}
-                              style={{ width: '100%', marginBottom: '8px', padding: '6px', borderRadius: '3px', border: '1px solid #374151', backgroundColor: '#1f2937', color: 'white', fontSize: '14px' }}
-                            >
-                              <option value="javascript">JavaScript</option>
-                              <option value="python">Python</option>
-                              <option value="java">Java</option>
-                              <option value="cpp">C++</option>
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => addCodeChallenge(topicIndex, lessonIndex)}
-                              style={{ padding: '6px 12px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
-                            >
-                              Add Code Challenge
-                            </button>
                           </div>
-
-                          {/* Existing Code Challenges */}
-                          {lesson.codeChallenges?.map((challenge, challengeIndex) => (
-                            <div key={challenge._id || challengeIndex} style={{ padding: '8px', backgroundColor: '#1f2937', borderRadius: '4px', marginBottom: '8px', border: '1px solid #374151' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                <span style={{ color: '#f59e0b', fontSize: '14px' }}>Challenge {challengeIndex + 1}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteCodeChallenge(topicIndex, lessonIndex, challengeIndex)}
-                                  style={{ padding: '2px 6px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontSize: '11px' }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Title"
-                                value={challenge.title}
-                                onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'title', e.target.value)}
-                                style={{ width: '100%', marginBottom: '5px', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', fontSize: '13px' }}
-                              />
-                              <textarea
-                                placeholder="Description"
-                                value={challenge.description}
-                                onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'description', e.target.value)}
-                                style={{ width: '100%', marginBottom: '5px', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '30px', fontSize: '13px' }}
-                              />
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '5px' }}>
-                                <input
-                                  type="text"
-                                  placeholder="Sample Input"
-                                  value={challenge.sampleInput}
-                                  onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'sampleInput', e.target.value)}
-                                  style={{ padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', fontSize: '13px' }}
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Sample Output"
-                                  value={challenge.sampleOutput}
-                                  onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'sampleOutput', e.target.value)}
-                                  style={{ padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', fontSize: '13px' }}
-                                />
-                              </div>
-                              <textarea
-                                placeholder="Constraints"
-                                value={challenge.constraints}
-                                onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'constraints', e.target.value)}
-                                style={{ width: '100%', marginBottom: '5px', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '25px', fontSize: '13px' }}
-                              />
-                              <textarea
-                                placeholder="Initial Code"
-                                value={challenge.initialCode}
-                                onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'initialCode', e.target.value)}
-                                style={{ width: '100%', marginBottom: '5px', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', minHeight: '40px', fontSize: '13px' }}
-                              />
-                              <select
-                                value={challenge.language}
-                                onChange={(e) => updateCodeChallenge(topicIndex, lessonIndex, challengeIndex, 'language', e.target.value)}
-                                style={{ width: '100%', padding: '4px', borderRadius: '2px', border: '1px solid #374151', backgroundColor: '#111827', color: 'white', fontSize: '13px' }}
-                              >
-                                <option value="javascript">JavaScript</option>
-                                <option value="python">Python</option>
-                                <option value="java">Java</option>
-                                <option value="cpp">C++</option>
-                              </select>
-                            </div>
-                          ))}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Final Test Tab */}
-            {editingMode === "finalTest" && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ color: '#8A00C4' }}>Final Test</h3>
-                  {selectedCourse?.finalTest ? (
-                    <button
-                      type="button"
-                      onClick={deleteFinalTest}
-                      style={{ padding: '8px 16px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                    >
-                      Delete Final Test
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={addFinalTest}
-                      style={{ padding: '8px 16px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                    >
-                      Add Final Test
-                    </button>
-                  )}
-                </div>
+                {/* Final Exam Tab */}
+                {editingMode === "finalExam" && (
+                  <div>
+                    <div style={{ padding: '20px', backgroundColor: 'rgba(138, 0, 196, 0.1)', borderRadius: '8px' }}>
+                      <h3 style={{ color: '#8A00C4', marginBottom: '15px' }}>Final Exam Configuration</h3>
+                      
+                      <div className="form-group">
+                        <label>Enable Final Exam</label>
+                        <div className="toggle-container">
+                          <label className="toggle-switch">
+                            <input
+                              type="checkbox"
+                              checked={selectedCourse?.finalExam?.isActive || false}
+                              onChange={(e) => setSelectedCourse(prev => ({
+                                ...prev,
+                                finalExam: { ...prev.finalExam, isActive: e.target.checked }
+                              }))}
+                            />
+                            <span className="toggle-slider"></span>
+                          </label>
+                          <span className="toggle-label">
+                            {selectedCourse?.finalExam?.isActive ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                      </div>
 
-                {selectedCourse?.finalTest && (
-                  <div style={{ padding: '20px', backgroundColor: 'rgba(138, 0, 196, 0.1)', borderRadius: '8px' }}>
-                    <p style={{ color: '#8A00C4', marginBottom: '15px' }}>
-                      Final Test exists with {selectedCourse.finalTest.mcqs?.length || 0} MCQs and {selectedCourse.finalTest.codeChallenges?.length || 0} code challenges
-                    </p>
-                    <p style={{ color: '#94a3b8', fontSize: '14px' }}>
-                      Final test editing will be implemented in the next update. For now, you can add/remove the final test.
-                    </p>
+                      {selectedCourse?.finalExam?.isActive && (
+                        <>
+                          <div className="form-group">
+                            <label>Exam Title</label>
+                            <input
+                              type="text"
+                              value={selectedCourse?.finalExam?.title || ""}
+                              onChange={(e) => setSelectedCourse(prev => ({
+                                ...prev,
+                                finalExam: { ...prev.finalExam, title: e.target.value }
+                              }))}
+                            />
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div className="form-group">
+                              <label>Duration (minutes)</label>
+                              <input
+                                type="number"
+                                value={selectedCourse?.finalExam?.duration || 120}
+                                onChange={(e) => setSelectedCourse(prev => ({
+                                  ...prev,
+                                  finalExam: { ...prev.finalExam, duration: parseInt(e.target.value) }
+                                }))}
+                                min="30"
+                              />
+                            </div>
+
+                            <div className="form-group">
+                              <label>Passing Score (%)</label>
+                              <input
+                                type="number"
+                                value={selectedCourse?.finalExam?.passingScore || 70}
+                                onChange={(e) => setSelectedCourse(prev => ({
+                                  ...prev,
+                                  finalExam: { ...prev.finalExam, passingScore: parseInt(e.target.value) }
+                                }))}
+                                min="0"
+                                max="100"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Security Settings */}
+                          <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#1f2937', borderRadius: '6px' }}>
+                            <h4 style={{ color: '#e5e7eb', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Lock size={18} />
+                              Security Settings
+                            </h4>
+                            
+                            <div className="security-toggles">
+                              <div className="security-toggle-item">
+                                <label className="toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCourse?.finalExam?.securitySettings?.preventCopyPaste || false}
+                                    onChange={(e) => setSelectedCourse(prev => ({
+                                      ...prev,
+                                      finalExam: {
+                                        ...prev.finalExam,
+                                        securitySettings: {
+                                          ...prev.finalExam.securitySettings,
+                                          preventCopyPaste: e.target.checked
+                                        }
+                                      }
+                                    }))}
+                                  />
+                                  <span className="toggle-slider"></span>
+                                </label>
+                                <div className="security-toggle-label">
+                                  <Copy size={16} />
+                                  <span>Prevent Copy/Paste</span>
+                                </div>
+                              </div>
+
+                              <div className="security-toggle-item">
+                                <label className="toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCourse?.finalExam?.securitySettings?.preventTabSwitch || false}
+                                    onChange={(e) => setSelectedCourse(prev => ({
+                                      ...prev,
+                                      finalExam: {
+                                        ...prev.finalExam,
+                                        securitySettings: {
+                                          ...prev.finalExam.securitySettings,
+                                          preventTabSwitch: e.target.checked
+                                        }
+                                      }
+                                    }))}
+                                  />
+                                  <span className="toggle-slider"></span>
+                                </label>
+                                <div className="security-toggle-label">
+                                  <Monitor size={16} />
+                                  <span>Prevent Tab Switch</span>
+                                </div>
+                              </div>
+
+                              <div className="security-toggle-item">
+                                <label className="toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCourse?.finalExam?.securitySettings?.preventRightClick || false}
+                                    onChange={(e) => setSelectedCourse(prev => ({
+                                      ...prev,
+                                      finalExam: {
+                                        ...prev.finalExam,
+                                        securitySettings: {
+                                          ...prev.finalExam.securitySettings,
+                                          preventRightClick: e.target.checked
+                                        }
+                                      }
+                                    }))}
+                                  />
+                                  <span className="toggle-slider"></span>
+                                </label>
+                                <div className="security-toggle-label">
+                                  <MousePointer size={16} />
+                                  <span>Prevent Right Click</span>
+                                </div>
+                              </div>
+
+                              <div className="security-toggle-item">
+                                <label className="toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCourse?.finalExam?.securitySettings?.fullScreenRequired || false}
+                                    onChange={(e) => setSelectedCourse(prev => ({
+                                      ...prev,
+                                      finalExam: {
+                                        ...prev.finalExam,
+                                        securitySettings: {
+                                          ...prev.finalExam.securitySettings,
+                                          fullScreenRequired: e.target.checked
+                                        }
+                                      }
+                                    }))}
+                                  />
+                                  <span className="toggle-slider"></span>
+                                </label>
+                                <div className="security-toggle-label">
+                                  <Maximize size={16} />
+                                  <span>Full Screen Required</span>
+                                </div>
+                              </div>
+
+                              <div className="security-toggle-item">
+                                <label className="toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCourse?.finalExam?.securitySettings?.webcamMonitoring || false}
+                                    onChange={(e) => setSelectedCourse(prev => ({
+                                      ...prev,
+                                      finalExam: {
+                                        ...prev.finalExam,
+                                        securitySettings: {
+                                          ...prev.finalExam.securitySettings,
+                                          webcamMonitoring: e.target.checked
+                                        }
+                                      }
+                                    }))}
+                                  />
+                                  <span className="toggle-slider"></span>
+                                </label>
+                                <div className="security-toggle-label">
+                                  <Eye size={16} />
+                                  <span>Webcam Monitoring</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#1f2937', borderRadius: '6px' }}>
+                            <p style={{ color: '#e5e7eb', marginBottom: '10px' }}>Exam Content:</p>
+                            <div style={{ display: 'flex', gap: '20px', color: '#94a3b8', fontSize: '14px' }}>
+                              <span>📝 {selectedCourse.finalExam.mcqs?.length || 0} MCQs</span>
+                              <span>💻 {selectedCourse.finalExam.codeChallenges?.length || 0} Coding Challenges</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            <div className="modal-buttons" style={{ marginTop: '30px', display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={closeModal} className="cancel-btn">
-                Cancel
-              </button>
-              <button type="submit" className="save-btn" disabled={isUpdating}>
-                {isUpdating ? "Saving..." : "Save Changes"}
-              </button>
+                {/* Settings Tab */}
+                {editingMode === "settings" && (
+                  <div>
+                    <h3 style={{ color: '#8A00C4', marginBottom: '20px' }}>Scoring Configuration</h3>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                      <div className="form-group">
+                        <label>MCQ Marks (Default)</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.mcqMarks || 10}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, mcqMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Coding Marks (Default)</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.codingMarks || 50}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, codingMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Lesson MCQ Marks</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.lessonMcqMarks || 5}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, lessonMcqMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Lesson Coding Marks</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.lessonCodingMarks || 25}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, lessonCodingMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Module Test MCQ Marks</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.moduleTestMcqMarks || 15}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, moduleTestMcqMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Module Test Coding Marks</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.moduleTestCodingMarks || 75}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, moduleTestCodingMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Final Exam MCQ Marks</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.finalExamMcqMarks || 20}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, finalExamMcqMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Final Exam Coding Marks</label>
+                        <input
+                          type="number"
+                          value={selectedCourse?.scoringConfig?.finalExamCodingMarks || 100}
+                          onChange={(e) => setSelectedCourse(prev => ({
+                            ...prev,
+                            scoringConfig: { ...prev.scoringConfig, finalExamCodingMarks: parseFloat(e.target.value) }
+                          }))}
+                          step="0.5"
+                          min="0.5"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="modal-buttons" style={{ marginTop: '30px', display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
+                  <button 
+                    type="button" 
+                    onClick={closeModal} 
+                    className="cancel-btn"
+                    style={{
+                      padding: '10px 20px',
+                      background: 'transparent',
+                      color: '#94a3b8',
+                      border: '1px solid #374151',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <X size={16} />
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="save-btn" 
+                    disabled={isUpdating}
+                    style={{
+                      padding: '10px 20px',
+                      background: isUpdating ? '#6b21a8' : '#8A00C4',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isUpdating ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Save size={16} />
+                    {isUpdating ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
-      </Modal>
-    </div>
-  );
-};
+          </div>
+        )}
+      </>
+    );
+  };
 
 export default AdminEditCourses;

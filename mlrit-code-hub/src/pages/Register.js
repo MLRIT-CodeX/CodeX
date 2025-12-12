@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import './login.css'; // We'll reuse the same styles
+import './Register.css'; // We'll reuse the same styles
 
 const Register = () => {
   const location = useLocation();
@@ -49,7 +49,7 @@ const Register = () => {
     });
   };
 
-  const academicYears = Array.from({length: 2040 - 2026 + 1}, (_, i) => 2026 + i);
+  const academicYears = Array.from({length: 2030 - 2026 + 1}, (_, i) => 2026 + i);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -239,7 +239,6 @@ const Register = () => {
           <div className="form-options">
             <label className="checkbox-container">
               <input type="checkbox" required />
-              <span className="checkmark"></span>
               I agree to the Terms and Conditions
             </label>
           </div>

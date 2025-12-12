@@ -32,6 +32,9 @@ app.use("/api/skill-tests", require("./routes/skillTestRoutes")); // Skill Tests
 app.use("/api/progress", require("./routes/userProgressRoutes")); // Progress
 app.use("/api/streak", require("./routes/streakRoutes")); // Streak Tracking
 console.log("Loading MCQ submission routes...");
+app.use("/api/external", require("./routes/externalLeetcode"));
+app.use("/api/external", require("./routes/externalCodeforces"));
+app.use("/api/external", require("./routes/externalCodechef"));
 try {
   app.use("/api/mcq-submissions", require("./routes/mcqSubmissionRoutes")); // MCQ Submissions
   console.log("MCQ submission routes loaded successfully.");

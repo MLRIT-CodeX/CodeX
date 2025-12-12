@@ -1,0 +1,259 @@
+/* Import/Define Core Neon Variables (Ensure these are available globally or imported) */
+:root {
+  --neon-blue: #00f0ff;
+  --neon-pink: #ff00ff;
+  --neon-green: #00ff88;
+  --card-bg: rgba(20, 20, 35, 0.8);
+  --card-border: rgba(0, 240, 255, 0.3);
+  --dark-bg: #0a0a0f;
+}
+
+/* --- Component Wrapper and Header Styles (Kept for the Component's Structure) --- */
+
+.contributions-section {
+    margin-bottom: 32px;
+}
+
+.neon-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    padding: 28px;
+    backdrop-filter: blur(20px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--neon-blue);
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+}
+
+.contributions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px !important;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.contributions-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.control-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.neon-select {
+    padding: 10px 20px !important;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    border-radius: 12px;
+    color: var(--neon-blue);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.legend-colors {
+    display: flex;
+    gap: 4px;
+}
+
+.legend-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Legend Levels */
+.legend-box.level-0 { background: rgba(255, 255, 255, 0.05); }
+.legend-box.level-1 { background: rgba(0, 255, 136, 0.3); box-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+.legend-box.level-2 { background: rgba(0, 255, 136, 0.6); box-shadow: 0 0 15px rgba(0, 255, 136, 0.5); }
+.legend-box.level-3 { background: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 136, 0.8); }
+.legend-box.level-4 { 
+    background: var(--neon-green); 
+    box-shadow: 0 0 25px rgba(0, 255, 136, 1); 
+    border-color: var(--neon-green);
+}
+
+/* Stats Row */
+.contributions-stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    margin-bottom: 18px !important;
+}
+
+.contribution-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px !important;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+
+.stat-value-text {
+    font-size: 18px !important;
+    font-weight: 500 !important;
+    color: var(--neon-blue);
+    text-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+}
+
+/* ------------------------------------------- */
+/* --- CORE HEATMAP LAYOUT STYLES (NEW) --- */
+/* ------------------------------------------- */
+
+.contributions-graph {
+    /* Main container: Row layout for vertical labels and month blocks */
+    display: flex;
+    flex-direction: row;
+    gap: 8px !important; 
+    overflow-x: auto;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    min-height: 140px;
+    width: 100%;
+}
+
+/* Scrollbar (Retained) */
+.contributions-graph::-webkit-scrollbar { height: 8px; }
+.contributions-graph::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.contributions-graph::-webkit-scrollbar-thumb { 
+    background: var(--neon-blue); 
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5); 
+}
+
+/* Day Labels (Vertical) */
+.day-labels {
+    display: flex;
+    flex-direction: column; 
+    justify-content: space-between;
+    padding-top: 1.5rem; 
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    width: 30px; 
+    flex-shrink: 0;
+}
+
+.day-label {
+    text-align: right;
+    height: 14px; /* Matches cube height */
+    line-height: 14px;
+}
+
+/* Months Container (Horizontal Scroll) */
+.months-container {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 5px; 
+}
+
+.month-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: fit-content;
+}
+
+.month-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    margin-bottom: 4px;
+    font-weight: 500;
+    transform: translateY(-10px); 
+}
+
+/* Grid Definition */
+.month-grid {
+    display: flex;
+    flex-direction: column; /* Stacks the 7 day-rows vertically */
+    gap: 3px; 
+}
+
+.day-row {
+    display: flex;
+    gap: 3px; /* Gap between cubes/weeks (Horizontal gap) */
+}
+
+/* Individual Cube Styling */
+.contribution-box {
+    width: 12px; /* COMPACT SIZE */
+    height: 12px;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    /* Level 0 background is the default */
+    background: rgba(255, 255, 255, 0.05); 
+}
+
+/* Activity Level Colors */
+.contribution-box.level-1 { background: rgba(0, 255, 136, 0.3); }
+.contribution-box.level-2 { background: rgba(0, 255, 136, 0.6); }
+.contribution-box.level-3 { background: var(--neon-green); box-shadow: 0 0 8px rgba(0, 255, 136, 0.6); }
+.contribution-box.level-4 { 
+    background: var(--neon-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+    border-color: var(--neon-green);
+}
+
+.contribution-box.empty {
+    background: transparent;
+    border: none;
+}
+
+.contribution-box:hover {
+    transform: scale(1.5);
+    /* Color depends on the level, making it use current color */
+    box-shadow: 0 0 20px currentColor; 
+    z-index: 10;
+    position: relative;
+}
