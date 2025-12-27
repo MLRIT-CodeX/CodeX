@@ -1,760 +1,375 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import UserContext from '../context/UserContext';
 import './ProfileEdit.css';
-import { FaUserCircle, FaSave, FaTimes, FaUpload } from 'react-icons/fa';
 
-const ProfileEdit = ({ isOpen, onClose }) => {
-  const { user, setUser } = useContext(UserContext);
-  const [loading, setLoading] = useState(false);
-  const [previewPic, setPreviewPic] = useState("");
+const ProfileEdit = ({ user, userId, onCancel, onSaveSuccess }) => {
   const [formData, setFormData] = useState({
-    // Standalone Fields
-    email: "",
-    profilePic: "",
-    
-    // Personal Information
-    personalInfo: {
-      name: "",
-      phoneNumber: "",
-      gender: "",
-      dob: ""
-    },
-    
-    // Academic Information
-    academic: {
-      college: "",
-      rollNumber: "",
-      year: "",
-      department: "",
-      currentSemester: "",
-      cgpa: ""
-    },
-    
-    // Address Information
-    address: {
-      street: "",
-      district: "",
-      city: "",
-      state: "",
-      pincode: ""
-    },
-    
-    // Coding Profiles
+    name: '',
+    profilePic: '',
+    college: '',
+    department: '',
+    year: '',
+    rollNumber: '',
+    phoneNumber: '',
+    socialProfiles: { linkedin: '', instagram: '', facebook: '' },
     codingProfiles: {
-      leetcode: "",
-      codechef: "",
-      codeforces: "",
-      github: "",
-      linkedin: ""
+      leetcode: '',
+      codechef: '',
+      github: '',
+      codeforces: '',
+      hackerrank: '',
+      geeksforgeeks: '',
     },
-    
-    // Professional Profiles
-    profiles: {
-      portfolioLink: "",
-      resumeLink: ""
-    },
-    
-    // Social Links
-    socialLinks: {
-      facebook: "",
-      instagram: "",
-      twitter: ""
-    },
-    
-    // Skills and Interests (Arrays)
-    skills: [],
-    interests: []
+    skills: '',
   });
+  const [profileFile, setProfileFile] = useState(null);
+  const [profilePreview, setProfilePreview] = useState('');
+  const [isUploadingPic, setIsUploadingPic] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [newSkill, setNewSkill] = useState("");
-  const [newInterest, setNewInterest] = useState("");
+  const getProfilePicUrl = (pic) => {
+    if (!pic) return '';
+    if (pic.startsWith('http')) return pic;
+    return `http://localhost:5000${pic}`;
+  };
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    // Populate form with existing user data
-    setFormData({
-      email: user.email || "",
-      profilePic: user.profilePic || "",
-      
-      personalInfo: {
-        name: user.personalInfo?.name || "",
-        phoneNumber: user.personalInfo?.phoneNumber || "",
-        gender: user.personalInfo?.gender || "",
-        dob: user.personalInfo?.dob ? user.personalInfo.dob.slice(0, 10) : ""
-      },
-      
-      academic: {
-        college: user.academic?.college || "",
-        rollNumber: user.academic?.rollNumber || "",
-        year: user.academic?.year || "",
-        department: user.academic?.department || "",
-        currentSemester: user.academic?.currentSemester || "",
-        cgpa: user.academic?.cgpa || ""
-      },
-      
-      address: {
-        street: user.address?.street || "",
-        district: user.address?.district || "",
-        city: user.address?.city || "",
-        state: user.address?.state || "",
-        pincode: user.address?.pincode || ""
-      },
-      
-      codingProfiles: {
-        leetcode: user.codingProfiles?.leetcode || "",
-        codechef: user.codingProfiles?.codechef || "",
-        codeforces: user.codingProfiles?.codeforces || "",
-        github: user.codingProfiles?.github || "",
-        linkedin: user.codingProfiles?.linkedin || ""
-      },
-      
-      profiles: {
-        portfolioLink: user.profiles?.portfolioLink || "",
-        resumeLink: user.profiles?.resumeLink || ""
-      },
-      
-      socialLinks: {
-        facebook: user.socialLinks?.facebook || "",
-        instagram: user.socialLinks?.instagram || "",
-        twitter: user.socialLinks?.twitter || ""
-      },
-      
-      skills: user.skills || [],
-      interests: user.interests || []
-    });
-  }, [user]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('Authentication required. Please login again.');
+          setIsLoading(false);
+          return;
         }
+
+        const { data } = await axios.get('http://localhost:5000/api/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setFormData({
+          name: data.name || '',
+          profilePic: data.profilePic || '',
+          college: data.college || '',
+          department: data.department || '',
+          year: data.year || '',
+          rollNumber: data.rollNumber || '',
+          phoneNumber: data.phoneNumber || '',
+          socialProfiles: {
+            linkedin: data.socialProfiles?.linkedin || '',
+            instagram: data.socialProfiles?.instagram || '',
+            facebook: data.socialProfiles?.facebook || '',
+          },
+          codingProfiles: {
+            leetcode: data.codingProfiles?.leetcode || '',
+            codechef: data.codingProfiles?.codechef || '',
+            github: data.codingProfiles?.github || '',
+            codeforces: data.codingProfiles?.codeforces || '',
+            hackerrank: data.codingProfiles?.hackerrank || '',
+            geeksforgeeks: data.codingProfiles?.geeksforgeeks || '',
+          },
+          skills: Array.isArray(data.skills) ? data.skills.join(', ') : '',
+        });
+        setProfilePreview(getProfilePicUrl(data.profilePic));
+      } catch (err) {
+        console.error('Failed to fetch profile', err);
+        alert('Failed to load profile details.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
+
+  // Add ESC key handler to close modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && onCancel) {
+        onCancel();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [onCancel]);
+
+  const handleChange = (e, section) => {
+    const { name, value } = e.target;
+    if (section) {
+      setFormData((prev) => ({
+        ...prev,
+        [section]: { ...prev[section], [name]: value },
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const handlePicUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    setPreviewPic(URL.createObjectURL(file));
-    const formDataPic = new FormData();
-    formDataPic.append("profilePic", file);
-    
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post("http://localhost:5000/api/profile/upload-pic", formDataPic, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUser((prev) => ({ ...prev, profilePic: res.data.url }));
-    } catch (error) {
-      alert("Image upload failed");
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileFile(file);
+      setProfilePreview(URL.createObjectURL(file));
     }
   };
-
-  const addSkill = () => {
-    if (newSkill.trim() && !formData.skills.includes(newSkill.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        skills: [...prev.skills, newSkill.trim()]
-      }));
-      setNewSkill("");
-    }
-  };
-
-  const removeSkill = (skillToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
-    }));
-  };
-
-  const addInterest = () => {
-    if (newInterest.trim() && !formData.interests.includes(newInterest.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        interests: [...prev.interests, newInterest.trim()]
-      }));
-      setNewInterest("");
-    }
-  };
-
-  const removeInterest = (interestToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.filter(interest => interest !== interestToRemove)
-    }));
-  };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    let profilePicToSave = formData.profilePic;
 
     try {
-      const token = localStorage.getItem("token");
-      const payload = {
-        ...formData,
-        academic: {
-          ...formData.academic,
-          year: formData.academic.year ? Number(formData.academic.year) : undefined,
-          cgpa: formData.academic.cgpa ? Number(formData.academic.cgpa) : undefined,
-          currentSemester: formData.academic.currentSemester ? Number(formData.academic.currentSemester) : undefined
-        },
-        address: {
-          ...formData.address,
-          pincode: formData.address.pincode ? Number(formData.address.pincode) : undefined
-        }
-      };
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Authentication required. Please login again.');
+        return;
+      }
 
-      const res = await axios.put("http://localhost:5000/api/profile", payload, {
+      if (profileFile) {
+        setIsUploadingPic(true);
+        try {
+          const picData = new FormData();
+          picData.append('profilePic', profileFile);
+
+          const uploadRes = await axios.post('http://localhost:5000/api/profile/upload-pic', picData, {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+          });
+
+          const uploadedUrl = uploadRes.data?.url;
+          if (uploadedUrl) {
+            profilePicToSave = uploadedUrl;
+            setFormData((prev) => ({ ...prev, profilePic: uploadedUrl }));
+            setProfilePreview(getProfilePicUrl(uploadedUrl));
+          }
+        } finally {
+          setIsUploadingPic(false);
+        }
+      }
+
+      const updatedData = {};
+      if (formData.name) updatedData.name = formData.name;
+      if (formData.college) updatedData.college = formData.college;
+      if (formData.department) updatedData.department = formData.department;
+      if (formData.year) updatedData.year = formData.year;
+      if (formData.rollNumber) updatedData.rollNumber = formData.rollNumber;
+      if (formData.phoneNumber) updatedData.phoneNumber = formData.phoneNumber;
+
+      if (formData.socialProfiles && Object.keys(formData.socialProfiles).length > 0) {
+        updatedData.socialProfiles = formData.socialProfiles;
+      }
+
+      if (formData.codingProfiles && Object.keys(formData.codingProfiles).length > 0) {
+        updatedData.codingProfiles = formData.codingProfiles;
+      }
+
+      if (formData.skills) {
+        const skillsArray = formData.skills
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (skillsArray.length > 0) {
+          updatedData.skills = skillsArray;
+        }
+      }
+
+      if (profilePicToSave) {
+        updatedData.profilePic = profilePicToSave;
+      }
+
+      const { data } = await axios.put('http://localhost:5000/api/profile', updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setUser(res.data);
-      alert("Profile updated successfully!");
-      onClose();
-    } catch (error) {
-      console.error("Profile update failed:", error);
-      alert("Profile update failed. Please try again.");
-    } finally {
-      setLoading(false);
+      if (onSaveSuccess) onSaveSuccess(data);
+    } catch (err) {
+      console.error('Update failed', err);
+      alert('Failed to update profile: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-  };
-
-  if (!user) {
-    return null;
-  }
-
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="profile-edit-modal-overlay" onClick={onClose}>
+    <div className="profile-edit-modal-overlay" onClick={onCancel}>
       <div className="profile-edit-modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="profile-edit-container">
-          <button className="modal-close-btn" onClick={onClose} type="button">
-            <FaTimes />
-          </button>
-      <div className="profile-edit-header">
-        <h1 className="profile-edit-title">Edit Profile</h1>
-        <p className="profile-edit-subtitle">Update your personal information and preferences</p>
-      </div>
+        <form className="profile-edit-form" onSubmit={handleSubmit}>
+          <div className="profile-edit-header">
+            <h2 className="profile-edit-title">Modify Profile Details</h2>
+            <button type="button" className="modal-close-btn" onClick={onCancel} aria-label="Close">
+              <span>×</span>
+            </button>
+          </div>
 
-      <form onSubmit={handleSubmit} className="profile-edit-form">
-        {/* Profile Picture Section */}
-        <div className="form-section">
-          <h2 className="section-title">Profile Picture</h2>
-          <div className="profile-pic-section">
-            <div className="profile-pic-container">
-              {previewPic ? (
-                <img src={previewPic} alt="Preview" className="profile-pic-preview" />
-              ) : user.profilePic ? (
-                <img src={`http://localhost:5000${user.profilePic}`} alt="Profile" className="profile-pic-preview" />
-              ) : (
-                <FaUserCircle className="profile-pic-placeholder" />
-              )}
-            </div>
-            <div className="profile-pic-upload">
-              <label htmlFor="profilePic" className="upload-btn">
-                <FaUpload /> Upload Photo
-              </label>
-              <input
-                type="file"
-                id="profilePic"
-                accept="image/*"
-                onChange={handlePicUpload}
-                style={{ display: 'none' }}
-              />
+      {isLoading ? (
+        <p style={{ padding: '1rem' }}>Loading profile...</p>
+      ) : (
+        <>
+          <div className="form-section">
+            <h3 className="section-title">Basic Information</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Name</label>
+                <input name="name" value={formData.name} onChange={handleChange} placeholder="Your full name" />
+              </div>
+              <div className="form-group">
+                <label>Profile Picture</label>
+                <div className="profile-pic-upload">
+                  <div className="profile-pic-preview">
+                    {profilePreview ? (
+                      <img src={profilePreview} alt="Profile preview" />
+                    ) : (
+                      <div className="profile-pic-placeholder">No image</div>
+                    )}
+                  </div>
+                  <input
+                    id="profilePicInput"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePicChange}
+                    className="profile-file-input"
+                  />
+                  <label htmlFor="profilePicInput" className="file-trigger-btn">
+                    Choose file
+                  </label>
+                  {isUploadingPic && <small>Uploading picture...</small>}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Personal Information */}
-        <div className="form-section">
-          <h2 className="section-title">Personal Information</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="name">Full Name</label>
-              <input
-                type="text"
-                id="name"
-                name="personalInfo.name"
-                value={formData.personalInfo.name}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter your full name"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter your email"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phoneNumber">Phone Number</label>
-              <input
-                type="tel"
-                id="phoneNumber"
-                name="personalInfo.phoneNumber"
-                value={formData.personalInfo.phoneNumber}
-                onChange={handleInputChange}
-                placeholder="Enter your phone number"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="dob">Date of Birth</label>
-              <input
-                type="date"
-                id="dob"
-                name="personalInfo.dob"
-                value={formData.personalInfo.dob}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="gender">Gender</label>
-              <select
-                id="gender"
-                name="personalInfo.gender"
-                value={formData.personalInfo.gender}
-                onChange={handleInputChange}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Academic Information */}
-        <div className="form-section">
-          <h2 className="section-title">Academic Information</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="rollNumber">Roll Number *</label>
-              <input
-                type="text"
-                id="rollNumber"
-                name="academic.rollNumber"
-                value={formData.academic.rollNumber}
-                onChange={handleInputChange}
-                placeholder="Enter your roll number"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="college">College/University *</label>
-              <select
-                id="college"
-                name="academic.college"
-                value={formData.academic.college}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="">Select College</option>
-                <option value="MLRIT">MLRIT</option>
-                <option value="MRLS">MRLS</option>
-                <option value="IARE">IARE</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="department">Department *</label>
-              <select
-                id="department"
-                name="academic.department"
-                value={formData.academic.department}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="">Select Department</option>
-                <option value="CSE">CSE</option>
-                <option value="CSD">CSD</option>
-                <option value="CSC">CSC</option>
-                <option value="CSM">CSM</option>
-                <option value="IT">IT</option>
-                <option value="CSIT">CSIT</option>
-                <option value="ECE">ECE</option>
-                <option value="EEE">EEE</option>
-                <option value="AERO">AERO</option>
-                <option value="MECH">MECH</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="year">Graduation Year *</label>
-              <select
-                id="year"
-                name="academic.year"
-                value={formData.academic.year}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="">Select Year</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-                <option value="2029">2029</option>
-                <option value="2030">2030</option>
-                <option value="2031">2031</option>
-                <option value="2032">2032</option>
-                <option value="2033">2033</option>
-                <option value="2034">2034</option>
-                <option value="2035">2035</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="currentSemester">Current Semester</label>
-              <select
-                id="currentSemester"
-                name="academic.currentSemester"
-                value={formData.academic.currentSemester}
-                onChange={handleInputChange}
-              >
-                <option value="">Select Semester</option>
-                <option value="1">1st Semester</option>
-                <option value="2">2nd Semester</option>
-                <option value="3">3rd Semester</option>
-                <option value="4">4th Semester</option>
-                <option value="5">5th Semester</option>
-                <option value="6">6th Semester</option>
-                <option value="7">7th Semester</option>
-                <option value="8">8th Semester</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="cgpa">CGPA</label>
-              <input
-                type="number"
-                id="cgpa"
-                name="academic.cgpa"
-                value={formData.academic.cgpa}
-                onChange={handleInputChange}
-                placeholder="Enter your CGPA"
-                min="0"
-                max="10"
-                step="0.01"
-              />
+          <div className="form-section">
+            <h3 className="section-title">Academic Background</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>College</label>
+                <select name="college" value={formData.college} onChange={handleChange}>
+                  <option value="MLR Institute of Technology">MLR Institute of Technology</option>
+                  <option value="Marri Laxman Reddy College">Marri Laxman Reddy College</option>
+                  <option value="IARE">IARE</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Department</label>
+                <input name="department" value={formData.department} onChange={handleChange} />
+              </div>
+              <div className="form-group">
+                <label>Year</label>
+                <select name="year" value={formData.year} onChange={handleChange}>
+                  <option value="">Select Year</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
+                  <option value="2029">2029</option>
+                  <option value="2030">2030</option>
+                  <option value="2031">2031</option>
+                  <option value="2032">2032</option>
+                  <option value="2033">2033</option>
+                  <option value="2034">2034</option>
+                  <option value="2035">2035</option>
+                </select>
+              </div>
+              <div className="form-group full-width">
+                <label>Roll Number</label>
+                <input
+                  name="rollNumber"
+                  value={formData.rollNumber}
+                  onChange={(e) =>
+                    handleChange({
+                      target: { name: 'rollNumber', value: e.target.value.toUpperCase() },
+                    })
+                  }
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Address Information */}
-        <div className="form-section">
-          <h2 className="section-title">Address Information</h2>
-          <div className="form-grid">
+          <div className="form-section">
+            <h3 className="section-title">Personal & Social</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Phone Number</label>
+                <input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} />
+              </div>
+              <div className="form-group">
+                <label>LinkedIn URL</label>
+                <input
+                  name="linkedin"
+                  placeholder="https://..."
+                  value={formData.socialProfiles.linkedin}
+                  onChange={(e) => handleChange(e, 'socialProfiles')}
+                />
+              </div>
+              <div className="form-group">
+                <label>Instagram Username</label>
+                <input
+                  name="instagram"
+                  placeholder="@username"
+                  value={formData.socialProfiles.instagram}
+                  onChange={(e) => handleChange(e, 'socialProfiles')}
+                />
+              </div>
+              <div className="form-group">
+                <label>Facebook ID</label>
+                <input
+                  name="facebook"
+                  placeholder="Username"
+                  value={formData.socialProfiles.facebook}
+                  onChange={(e) => handleChange(e, 'socialProfiles')}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="section-title">Coding Profile Links</h3>
+            <div className="form-grid">
+              {['leetcode', 'codechef', 'github', 'codeforces', 'hackerrank', 'geeksforgeeks'].map((site) => (
+                <div className="form-group" key={site}>
+                  <label>{site.charAt(0).toUpperCase() + site.slice(1)} URL</label>
+                  <input
+                    name={site}
+                    placeholder={`https://${site}.com/u/...`}
+                    value={formData.codingProfiles[site]}
+                    onChange={(e) => handleChange(e, 'codingProfiles')}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="section-title">Skills & Tech Stack</h3>
             <div className="form-group full-width">
-              <label htmlFor="address.street">Street Address</label>
-              <input
-                type="text"
-                id="address.street"
-                name="address.street"
-                value={formData.address.street}
-                onChange={handleInputChange}
-                placeholder="Enter your street address"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="address.district">District</label>
-              <input
-                type="text"
-                id="address.district"
-                name="address.district"
-                value={formData.address.district}
-                onChange={handleInputChange}
-                placeholder="Enter your district"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="address.city">City</label>
-              <input
-                type="text"
-                id="address.city"
-                name="address.city"
-                value={formData.address.city}
-                onChange={handleInputChange}
-                placeholder="Enter your city"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="address.state">State</label>
-              <input
-                type="text"
-                id="address.state"
-                name="address.state"
-                value={formData.address.state}
-                onChange={handleInputChange}
-                placeholder="Enter your state"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="address.pincode">Pincode</label>
-              <input
-                type="number"
-                id="address.pincode"
-                name="address.pincode"
-                value={formData.address.pincode}
-                onChange={handleInputChange}
-                placeholder="Enter your pincode"
+              <label>Skills (Comma separated)</label>
+              <textarea
+                name="skills"
+                value={formData.skills}
+                onChange={handleChange}
+                placeholder="React, Node.js, Python..."
               />
             </div>
           </div>
-        </div>
 
-        {/* Coding Profiles */}
-        <div className="form-section">
-          <h2 className="section-title">Coding Profiles</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="codingProfiles.leetcode">LeetCode Username</label>
-              <input
-                type="text"
-                id="codingProfiles.leetcode"
-                name="codingProfiles.leetcode"
-                value={formData.codingProfiles.leetcode}
-                onChange={handleInputChange}
-                placeholder="Your LeetCode username"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="codingProfiles.codechef">CodeChef Username</label>
-              <input
-                type="text"
-                id="codingProfiles.codechef"
-                name="codingProfiles.codechef"
-                value={formData.codingProfiles.codechef}
-                onChange={handleInputChange}
-                placeholder="Your CodeChef username"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="codingProfiles.codeforces">Codeforces Username</label>
-              <input
-                type="text"
-                id="codingProfiles.codeforces"
-                name="codingProfiles.codeforces"
-                value={formData.codingProfiles.codeforces}
-                onChange={handleInputChange}
-                placeholder="Your Codeforces username"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="codingProfiles.github">GitHub Username</label>
-              <input
-                type="text"
-                id="codingProfiles.github"
-                name="codingProfiles.github"
-                value={formData.codingProfiles.github}
-                onChange={handleInputChange}
-                placeholder="Your GitHub username"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="codingProfiles.linkedin">LinkedIn Profile</label>
-              <input
-                type="text"
-                id="codingProfiles.linkedin"
-                name="codingProfiles.linkedin"
-                value={formData.codingProfiles.linkedin}
-                onChange={handleInputChange}
-                placeholder="Your LinkedIn profile URL"
-              />
-            </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-cancel" onClick={onCancel}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-save">
+              Save
+            </button>
           </div>
-        </div>
-
-        {/* Skills Section */}
-        <div className="form-section">
-          <h2 className="section-title">Skills</h2>
-          <div className="tags-input-container">
-            <div className="tags-input">
-              <input
-                type="text"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                placeholder="Add a skill..."
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-              />
-              <button type="button" onClick={addSkill} className="add-tag-btn">Add</button>
-            </div>
-            <div className="tags-display">
-              {formData.skills.map((skill, index) => (
-                <span key={index} className="tag">
-                  {skill}
-                  <button type="button" onClick={() => removeSkill(skill)} className="remove-tag">×</button>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Interests Section */}
-        <div className="form-section">
-          <h2 className="section-title">Interests</h2>
-          <div className="tags-input-container">
-            <div className="tags-input">
-              <input
-                type="text"
-                value={newInterest}
-                onChange={(e) => setNewInterest(e.target.value)}
-                placeholder="Add an interest..."
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
-              />
-              <button type="button" onClick={addInterest} className="add-tag-btn">Add</button>
-            </div>
-            <div className="tags-display">
-              {formData.interests.map((interest, index) => (
-                <span key={index} className="tag">
-                  {interest}
-                  <button type="button" onClick={() => removeInterest(interest)} className="remove-tag">×</button>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Professional Profiles */}
-        <div className="form-section">
-          <h2 className="section-title">Professional Profiles</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="portfolioLink">Portfolio Link</label>
-              <input
-                type="url"
-                id="portfolioLink"
-                name="profiles.portfolioLink"
-                value={formData.profiles.portfolioLink}
-                onChange={handleInputChange}
-                placeholder="https://yourportfolio.com"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="resumeLink">Resume Link</label>
-              <input
-                type="url"
-                id="resumeLink"
-                name="profiles.resumeLink"
-                value={formData.profiles.resumeLink}
-                onChange={handleInputChange}
-                placeholder="Link to your resume"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Social Links */}
-        <div className="form-section">
-          <h2 className="section-title">Social Links</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="socialLinks.twitter">Twitter</label>
-              <input
-                type="text"
-                id="socialLinks.twitter"
-                name="socialLinks.twitter"
-                value={formData.socialLinks.twitter}
-                onChange={handleInputChange}
-                placeholder="Your Twitter handle"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="socialLinks.instagram">Instagram</label>
-              <input
-                type="text"
-                id="socialLinks.instagram"
-                name="socialLinks.instagram"
-                value={formData.socialLinks.instagram}
-                onChange={handleInputChange}
-                placeholder="Your Instagram handle"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="socialLinks.facebook">Facebook</label>
-              <input
-                type="text"
-                id="socialLinks.facebook"
-                name="socialLinks.facebook"
-                value={formData.socialLinks.facebook}
-                onChange={handleInputChange}
-                placeholder="Your Facebook profile"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Form Actions */}
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="btn btn-cancel"
-            disabled={loading}
-          >
-            <FaTimes /> Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn btn-save"
-            disabled={loading}
-          >
-            <FaSave /> {loading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </form>
-        </div>
-      </div>
-    </div>
-  );
+        </>
+      )}
+    </form>
+  </div>
+</div>
+);
 };
 
 export default ProfileEdit;

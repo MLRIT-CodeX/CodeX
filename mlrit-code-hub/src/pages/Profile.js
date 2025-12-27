@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import UserContext from '../context/UserContext';
 import SubmissionHeatmap from '../components/Submissionheatmap';
 import './Profile.css';
-import EditProfile from '../components/EditProfile';
+import ProfileEdit from './ProfileEdit';
 
 // ---------------------------------------------
 // Helper functions for derived stats
@@ -92,6 +92,18 @@ const buildDashboardSummary = (problemsData, mcqData, challengeData) => {
 };
 
 // ---------------------------------------------
+// Helper: convert college name to short form
+// ---------------------------------------------
+const getCollegeShortName = (collegeName) => {
+  if (!collegeName) return 'N/A';
+  const collegeMap = {
+    'MLR Institute of Technology': 'MLRIT',
+    'Marri Laxman Reddy College': 'MLRITM',
+  };
+  return collegeMap[collegeName] || collegeName;
+};
+
+// ---------------------------------------------
 // Helper: extract LeetCode username from URL
 // ---------------------------------------------
 const extractLeetCodeUsername = (url) => {
@@ -167,11 +179,15 @@ const ProfileSidebar = ({ user, progressStats, onEditClick }) => {
       </div>
 
       <div className="details-section section">
-        <h3 className="section-title">Academic Background</h3>
+        <h3 className="section-title">Academic</h3>
         <ul className="details-list">
           <li>
             <span className="detail-label">College</span>
-            <span className="info-value">{user?.college || 'N/A'}</span>
+            <span className="info-value">{getCollegeShortName(user?.college)}</span>
+          </li>
+          <li>
+            <span className="detail-label">Year</span>
+            <span className="info-value">{user?.year || 'N/A'}</span>
           </li>
           <li>
             <span className="detail-label">Department</span>
@@ -1121,19 +1137,15 @@ const Profile = () => {
         </div>
 
         {isEditingProfile && (
-          <div className="edit-profile-modal-overlay">
-            <div className="edit-profile-modal">
-              <EditProfile
-                user={user}
-                userId={user?._id || user?.id}
-                onCancel={() => setIsEditingProfile(false)}
-                onSaveSuccess={(updatedUser) => {
-                  if (updatedUser) setUser(updatedUser);
-                  setIsEditingProfile(false);
-                }}
-              />
-            </div>
-          </div>
+          <ProfileEdit
+            user={user}
+            userId={user?._id || user?.id}
+            onCancel={() => setIsEditingProfile(false)}
+            onSaveSuccess={(updatedUser) => {
+              setUser(updatedUser);
+              setIsEditingProfile(false);
+            }}
+          />
         )}
       </div>
     </div>
