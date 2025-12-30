@@ -1,0 +1,127 @@
+{
+  "module": "Functions and Modules",
+  "lectures": [
+    {
+      "topic": "Defining Functions",
+      "content": {
+        "definition": [
+          "Functions are reusable blocks of code that perform specific tasks",
+          "They help organize code and avoid repetition"
+        ],
+        "syntax": "def function_name(parameters):\n    # function body\n    return result",
+        "examples": [
+          {
+            "title": "Simple Function",
+            "description": "A function that greets a user",
+            "code": "def greet(name):\n    return f'Hello, {name}!'",
+            "explanation": [
+              "Defines a function named 'greet'",
+              "Takes one parameter 'name'",
+              "Returns a greeting message"
+            ]
+          },
+          {
+            "title": "Function with Multiple Parameters",
+            "description": "A function that calculates area",
+            "code": "def calculate_area(length, width):\n    area = length * width\n    return area",
+            "explanation": [
+              "Takes two parameters",
+              "Calculates the area",
+              "Returns the result"
+            ]
+          }
+        ],
+        "keyTakeaways": [
+          "Functions start with the 'def' keyword",
+          "Parameters are optional",
+          "Use 'return' to send back a value",
+          "Functions promote code reusability"
+        ],
+        "practiceSection": {
+          "ready_to_practice": "Yes",
+          "description": "Practice creating and using functions",
+          "mcqs": "6 questions",
+          "coding_challenges": "4 challenges"
+        }
+      }
+    },
+    {
+      "topic": "Function Arguments",
+      "content": {
+        "definition": [
+          "Functions can accept different types of arguments",
+          "Positional, keyword, default, and variable-length arguments"
+        ],
+        "syntax": "def func(pos_arg, keyword_arg='default', *args, **kwargs):\n    pass",
+        "examples": [
+          {
+            "title": "Default Arguments",
+            "description": "Using default parameter values",
+            "code": "def power(base, exponent=2):\n    return base ** exponent\n\nprint(power(5))      # 25\nprint(power(5, 3))   # 125",
+            "explanation": [
+              "exponent has a default value of 2",
+              "Can be called with or without the second argument"
+            ]
+          }
+        ],
+        "keyTakeaways": [
+          "Default arguments provide fallback values",
+          "Keyword arguments improve readability",
+          "*args for variable positional arguments",
+          "**kwargs for variable keyword arguments"
+        ],
+        "practiceSection": {
+          "ready_to_practice": "Yes",
+          "description": "Master different argument types",
+          "mcqs": "5 questions",
+          "coding_challenges": "3 challenges"
+        }
+      }
+    },
+    {
+      "topic": "Lambda Functions",
+      "content": {
+        "definition": [
+          "Lambda functions are small anonymous functions",
+          "Defined using the lambda keyword",
+          "Can have any number of arguments but only one expression"
+        ],
+        "syntax": "lambda arguments: expression",
+        "examples": [
+          {
+            "title": "Simple Lambda",
+            "description": "Lambda function to add two numbers",
+            "code": "add = lambda x, y: x + y\nresult = add(5, 3)  # 8",
+            "explanation": [
+              "Creates an anonymous function",
+              "Takes two arguments x and y",
+              "Returns their sum"
+            ]
+          },
+          {
+            "title": "Lambda with Map",
+            "description": "Using lambda with map function",
+            "code": "numbers = [1, 2, 3, 4, 5]\nsquared = list(map(lambda x: x**2, numbers))",
+            "explanation": [
+              "Applies lambda to each element",
+              "Squares each number in the list"
+            ]
+          }
+        ],
+        "keyTakeaways": [
+          "Lambda functions are concise",
+          "Useful for short, simple operations",
+          "Often used with map, filter, reduce",
+          "Cannot contain statements, only expressions"
+        ],
+        "practiceSection": {
+          "ready_to_practice": "Yes",
+          "description": "Practice with lambda functions",
+          "mcqs": "4 questions",
+          "coding_challenges": "3 challenges"
+        }
+      }
+    }
+  ],
+  "estimatedDuration": "60-90 min"
+}

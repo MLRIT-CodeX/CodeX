@@ -1,0 +1,173 @@
+{
+  "title": "Data Structures in Python",
+  "description": "Learn about lists, tuples, dictionaries, and sets",
+  "order": 2,
+  "estimatedDuration": "3-4 hours",
+  "prerequisites": ["Python Basics"],
+  "learningObjectives": [
+    "Understand different data structures",
+    "Work with lists and dictionaries",
+    "Choose appropriate data structure for tasks"
+  ],
+  "theory": {
+    "textContent": "Data structures are ways of organizing and storing data...",
+    "files": {
+      "pdf": {
+        "name": "data_structures.pdf",
+        "url": "https://example.com/files/data_structures.pdf"
+      },
+      "ppt": {
+        "name": "data_structures_slides.pptx",
+        "url": "https://example.com/files/data_structures_slides.pptx",
+        "slides": [
+          {
+            "title": "Introduction to Data Structures",
+            "content": "Overview of Python data structures",
+            "slideNumber": 1
+          }
+        ],
+        "totalSlides": 15
+      }
+    }
+  },
+  "lecture": {
+    "module": "Data Structures in Python",
+    "lectures": [
+      {
+        "topic": "Lists and Tuples",
+        "content": {
+          "definition": [
+            "Lists are ordered, mutable collections",
+            "Tuples are ordered, immutable collections"
+          ],
+          "syntax": "my_list = [1, 2, 3]\nmy_tuple = (1, 2, 3)",
+          "examples": [
+            {
+              "title": "Creating a List",
+              "description": "How to create and manipulate lists",
+              "code": "fruits = ['apple', 'banana', 'cherry']\nfruits.append('orange')",
+              "explanation": [
+                "Creates a list of fruits",
+                "Adds 'orange' to the list"
+              ]
+            }
+          ],
+          "keyTakeaways": [
+            "Lists are mutable, tuples are immutable",
+            "Use lists when data needs to change"
+          ],
+          "practiceSection": {
+            "ready_to_practice": "Yes",
+            "description": "Practice with lists and tuples",
+            "mcqs": "8 questions",
+            "coding_challenges": "5 challenges"
+          }
+        }
+      }
+    ],
+    "estimatedDuration": "45-60 min"
+  },
+  "snippets": {
+    "codeExamples": [
+      {
+        "title": "List Operations",
+        "description": "Common list operations",
+        "code": "numbers = [1, 2, 3, 4, 5]\nnumbers.append(6)\nnumbers.remove(3)\nprint(numbers)",
+        "language": "python",
+        "category": "data-structures",
+        "tags": ["list", "operations"]
+      },
+      {
+        "title": "Dictionary Example",
+        "description": "Working with dictionaries",
+        "code": "student = {'name': 'John', 'age': 20, 'grade': 'A'}\nprint(student['name'])",
+        "language": "python",
+        "category": "data-structures",
+        "tags": ["dictionary", "key-value"]
+      }
+    ]
+  },
+  "mcqs": [
+    {
+      "question": "Which data structure is mutable in Python?",
+      "options": ["Tuple", "String", "List", "Integer"],
+      "correct": 2,
+      "explanation": "Lists are mutable, meaning they can be changed after creation",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "How do you access the first element of a list?",
+      "options": ["list[0]", "list[1]", "list.first()", "list.get(0)"],
+      "correct": 0,
+      "explanation": "Python uses zero-based indexing",
+      "marks": 1,
+      "difficulty": "easy"
+    }
+  ],
+  "codeChallenges": [
+    {
+      "title": "Reverse a List",
+      "description": "Write a function to reverse a list",
+      "sampleInput": "[1, 2, 3, 4, 5]",
+      "sampleOutput": "[5, 4, 3, 2, 1]",
+      "constraints": "Do not use built-in reverse() method",
+      "initialCode": "def reverse_list(lst):\n    # Your code here\n    pass",
+      "language": "python",
+      "marks": 3,
+      "difficulty": "medium",
+      "timeLimit": 30,
+      "testCases": [
+        {
+          "input": "[1, 2, 3, 4, 5]",
+          "expectedOutput": "[5, 4, 3, 2, 1]",
+          "isHidden": false
+        },
+        {
+          "input": "[10, 20, 30]",
+          "expectedOutput": "[30, 20, 10]",
+          "isHidden": true
+        }
+      ]
+    }
+  ],
+  "moduleTest": {
+    "mcqs": [
+      {
+        "question": "What is the time complexity of accessing an element in a list by index?",
+        "options": ["O(1)", "O(n)", "O(log n)", "O(n^2)"],
+        "correct": 0,
+        "explanation": "List access by index is constant time O(1)",
+        "marks": 2,
+        "difficulty": "medium"
+      }
+    ],
+    "codeChallenges": [
+      {
+        "title": "Find Maximum in List",
+        "description": "Write a function to find the maximum element in a list",
+        "sampleInput": "[3, 7, 2, 9, 1]",
+        "sampleOutput": "9",
+        "constraints": "Do not use built-in max() function",
+        "initialCode": "def find_max(lst):\n    # Your code here\n    pass",
+        "language": "python",
+        "marks": 5,
+        "difficulty": "medium",
+        "timeLimit": 30,
+        "testCases": [
+          {
+            "input": "[3, 7, 2, 9, 1]",
+            "expectedOutput": "9",
+            "isHidden": false
+          },
+          {
+            "input": "[-5, -2, -10, -1]",
+            "expectedOutput": "-1",
+            "isHidden": true
+          }
+        ]
+      }
+    ],
+    "totalMarks": 100
+  }
+}

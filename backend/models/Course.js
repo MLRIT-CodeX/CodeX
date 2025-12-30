@@ -25,8 +25,14 @@ const mcqSchema = new mongoose.Schema({
     type: Number, 
     required: true, 
     default: 1,
-    min: [0.5, 'Marks must be at least 0.5'],
-    max: [100, 'Marks cannot exceed 100']
+    min: [1, 'Marks must be at least 1'],
+    max: [100, 'Marks cannot exceed 100'],
+    validate: {
+      validator: function(val) {
+        return Number.isInteger(val);
+      },
+      message: 'Marks must be a whole number (integer)'
+    }
   },
   difficulty: {
     type: String,

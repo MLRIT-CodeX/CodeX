@@ -1,0 +1,120 @@
+{
+  "textContent": "Python is a high-level, interpreted programming language known for its simplicity and readability. Created by Guido van Rossum and first released in 1991, Python emphasizes code readability with its notable use of significant whitespace.\n\nKey Features of Python:\n\n1. Easy to Learn and Use\nPython has a simple syntax that mimics natural language, making it easy for beginners to learn programming concepts.\n\n2. Interpreted Language\nPython code is executed line by line, which makes debugging easier and development faster.\n\n3. Dynamically Typed\nYou don't need to declare variable types explicitly. Python automatically determines the type based on the value assigned.\n\n4. Object-Oriented\nPython supports object-oriented programming with classes and objects, enabling code reusability and modularity.\n\n5. Extensive Standard Library\nPython comes with a vast standard library that provides modules and functions for various tasks, from file I/O to web development.\n\n6. Cross-Platform\nPython runs on various operating systems including Windows, macOS, Linux, and Unix.\n\n7. Large Community\nPython has a massive and active community that contributes to its ecosystem with libraries, frameworks, and tools.\n\nCommon Use Cases:\n- Web Development (Django, Flask)\n- Data Science and Machine Learning (NumPy, Pandas, TensorFlow)\n- Automation and Scripting\n- Scientific Computing\n- Game Development\n- Desktop Applications\n- Network Programming\n\nPython Philosophy (The Zen of Python):\n- Beautiful is better than ugly\n- Explicit is better than implicit\n- Simple is better than complex\n- Complex is better than complicated\n- Readability counts\n\nGetting Started:\nTo start programming in Python, you need to install Python from python.org and use a text editor or IDE like VS Code, PyCharm, or Jupyter Notebook.",
+  "files": {
+    "pdf": {
+      "name": "python_fundamentals_guide.pdf",
+      "url": "https://example.com/files/python_fundamentals_guide.pdf"
+    },
+    "ppt": {
+      "name": "python_introduction_slides.pptx",
+      "url": "https://example.com/files/python_introduction_slides.pptx",
+      "slides": [
+        {
+          "title": "Welcome to Python",
+          "content": "Introduction to Python programming language and its history",
+          "slideNumber": 1
+        },
+        {
+          "title": "Why Python?",
+          "content": "Key features and advantages of using Python",
+          "slideNumber": 2
+        },
+        {
+          "title": "Python Syntax Basics",
+          "content": "Understanding Python's clean and readable syntax",
+          "slideNumber": 3
+        },
+        {
+          "title": "Variables and Data Types",
+          "content": "Working with different data types in Python",
+          "slideNumber": 4
+        },
+        {
+          "title": "Control Flow",
+          "content": "If statements, loops, and conditional logic",
+          "slideNumber": 5
+        },
+        {
+          "title": "Functions",
+          "content": "Creating and using functions in Python",
+          "slideNumber": 6
+        },
+        {
+          "title": "Data Structures",
+          "content": "Lists, tuples, dictionaries, and sets",
+          "slideNumber": 7
+        },
+        {
+          "title": "Object-Oriented Programming",
+          "content": "Classes, objects, and OOP principles",
+          "slideNumber": 8
+        },
+        {
+          "title": "Modules and Packages",
+          "content": "Organizing code with modules and packages",
+          "slideNumber": 9
+        },
+        {
+          "title": "File Handling",
+          "content": "Reading from and writing to files",
+          "slideNumber": 10
+        },
+        {
+          "title": "Exception Handling",
+          "content": "Handling errors gracefully with try-except",
+          "slideNumber": 11
+        },
+        {
+          "title": "Python Standard Library",
+          "content": "Overview of commonly used standard library modules",
+          "slideNumber": 12
+        },
+        {
+          "title": "Virtual Environments",
+          "content": "Managing project dependencies with virtual environments",
+          "slideNumber": 13
+        },
+        {
+          "title": "Popular Python Frameworks",
+          "content": "Django, Flask, FastAPI for web development",
+          "slideNumber": 14
+        },
+        {
+          "title": "Data Science with Python",
+          "content": "NumPy, Pandas, Matplotlib for data analysis",
+          "slideNumber": 15
+        },
+        {
+          "title": "Machine Learning",
+          "content": "Scikit-learn, TensorFlow, PyTorch basics",
+          "slideNumber": 16
+        },
+        {
+          "title": "Best Practices",
+          "content": "PEP 8 style guide and coding conventions",
+          "slideNumber": 17
+        },
+        {
+          "title": "Testing in Python",
+          "content": "Unit testing with unittest and pytest",
+          "slideNumber": 18
+        },
+        {
+          "title": "Debugging Techniques",
+          "content": "Tools and strategies for debugging Python code",
+          "slideNumber": 19
+        },
+        {
+          "title": "Next Steps",
+          "content": "Resources for continued learning and practice",
+          "slideNumber": 20
+        }
+      ],
+      "totalSlides": 20
+    },
+    "doc": {
+      "name": "python_study_notes.docx",
+      "url": "https://example.com/files/python_study_notes.docx"
+    }
+  }
+}

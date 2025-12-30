@@ -1,0 +1,155 @@
+{
+  "title": "Python Programming Fundamentals",
+  "description": "Complete Python course covering basics to advanced topics",
+  "difficulty": "medium",
+  "testUnlockThreshold": 80,
+  "scoringConfig": {
+    "mcqMarks": 10,
+    "codingMarks": 50,
+    "lessonMcqMarks": 5,
+    "lessonCodingMarks": 25,
+    "moduleTestMcqMarks": 15,
+    "moduleTestCodingMarks": 75,
+    "finalExamMcqMarks": 20,
+    "finalExamCodingMarks": 100
+  },
+  "modules": [
+    {
+      "title": "Python Basics",
+      "description": "Introduction to Python programming",
+      "order": 1,
+      "estimatedDuration": "2-3 hours",
+      "prerequisites": [],
+      "learningObjectives": [
+        "Understand Python syntax",
+        "Work with variables and data types",
+        "Use basic operators"
+      ],
+      "theory": {
+        "textContent": "Python is a high-level, interpreted programming language...",
+        "files": {
+          "pdf": {
+            "name": "python_basics.pdf",
+            "url": "https://example.com/files/python_basics.pdf"
+          }
+        }
+      },
+      "lecture": {
+        "module": "Python Basics",
+        "lectures": [
+          {
+            "topic": "Variables and Data Types",
+            "content": {
+              "definition": [
+                "Variables are containers for storing data values",
+                "Python has various data types including int, float, string, boolean"
+              ],
+              "syntax": "variable_name = value",
+              "examples": [
+                {
+                  "title": "Integer Variable",
+                  "description": "Creating an integer variable",
+                  "code": "age = 25",
+                  "explanation": ["This creates a variable named 'age' with value 25"]
+                }
+              ],
+              "keyTakeaways": [
+                "Variables don't need type declaration",
+                "Python is dynamically typed"
+              ],
+              "practiceSection": {
+                "ready_to_practice": "Yes",
+                "description": "Test your understanding",
+                "mcqs": "5 questions",
+                "coding_challenges": "3 challenges"
+              }
+            }
+          }
+        ],
+        "estimatedDuration": "30-45 min"
+      },
+      "snippets": {
+        "codeExamples": [
+          {
+            "title": "Hello World",
+            "description": "Basic print statement",
+            "code": "print('Hello, World!')",
+            "language": "python",
+            "category": "basics",
+            "tags": ["print", "basics"]
+          }
+        ]
+      },
+      "mcqs": [
+        {
+          "question": "What is Python?",
+          "options": [
+            "A snake",
+            "A programming language",
+            "A framework",
+            "A database"
+          ],
+          "correct": 1,
+          "explanation": "Python is a high-level programming language",
+          "marks": 1,
+          "difficulty": "easy"
+        }
+      ],
+      "codeChallenges": [
+        {
+          "title": "Print Your Name",
+          "description": "Write a program to print your name",
+          "sampleInput": "",
+          "sampleOutput": "John Doe",
+          "constraints": "Use print() function",
+          "initialCode": "# Write your code here\n",
+          "language": "python",
+          "marks": 2,
+          "difficulty": "easy",
+          "timeLimit": 30,
+          "testCases": [
+            {
+              "input": "",
+              "expectedOutput": "John Doe",
+              "isHidden": false
+            }
+          ]
+        }
+      ],
+      "moduleTest": {
+        "mcqs": [
+          {
+            "question": "Which keyword is used to define a function in Python?",
+            "options": ["function", "def", "func", "define"],
+            "correct": 1,
+            "explanation": "The 'def' keyword is used to define functions",
+            "marks": 1,
+            "difficulty": "easy"
+          }
+        ],
+        "codeChallenges": [
+          {
+            "title": "Sum of Two Numbers",
+            "description": "Write a function to add two numbers",
+            "sampleInput": "5, 3",
+            "sampleOutput": "8",
+            "constraints": "Numbers are integers",
+            "initialCode": "def add(a, b):\n    # Your code here\n    pass",
+            "language": "python",
+            "marks": 2,
+            "difficulty": "easy",
+            "timeLimit": 30,
+            "testCases": [
+              {
+                "input": "5, 3",
+                "expectedOutput": "8",
+                "isHidden": false
+              }
+            ]
+          }
+        ],
+        "totalMarks": 100
+      }
+    }
+  ]
+}

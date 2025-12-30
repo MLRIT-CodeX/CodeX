@@ -222,6 +222,13 @@ const ModernCourseDetail = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
+        console.log("=== COURSE DATA FETCHED ===");
+        console.log("Course Title:", courseResponse.data.title);
+        console.log("Course has modules property:", !!courseResponse.data.modules);
+        console.log("Modules array length:", courseResponse.data.modules?.length || 0);
+        console.log("Full course object:", courseResponse.data);
+        console.log("Modules data:", courseResponse.data.modules);
+
         setCourse(courseResponse.data);
         console.log("Course Loaded:", courseResponse.data.title);
 
@@ -276,26 +283,38 @@ const ModernCourseDetail = () => {
     try {
       console.log("=== ENROLL CLICKED ===");
       console.log("POST /courses/:id/enroll");
+      console.log("Course ID:", courseId);
+      console.log("User ID:", userId);
 
       // 1️⃣ Enroll request
-      await axios.post(
+      const enrollResponse = await axios.post(
         `http://localhost:5000/api/courses/${courseId}/enroll`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("Enrollment successful → verifying...");
+      console.log("Enrollment response:", enrollResponse.data);
+      console.log("Enrollment successful → waiting 500ms before verifying...");
 
-      // 2️⃣ Immediately verify using /courses/user/:userId
+      // Wait a bit for database to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 2️⃣ Verify using /courses/user/:userId
       const verify = await axios.get(
         `http://localhost:5000/api/courses/user/${userId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      console.log("Verification response:", verify.data);
       const enrolledCourses = verify.data?.courses || [];
+      console.log("Enrolled courses:", enrolledCourses.map(c => ({ id: c._id, title: c.title })));
 
       const isNowEnrolled = enrolledCourses.some(
-        (c) => (c._id?.toString() || c._id) === courseId.toString()
+        (c) => {
+          const courseIdMatch = (c._id?.toString() || c._id) === courseId.toString();
+          console.log(`Comparing: ${c._id} === ${courseId} → ${courseIdMatch}`);
+          return courseIdMatch;
+        }
       );
 
       console.log("Verified enrollment:", isNowEnrolled);
@@ -303,6 +322,11 @@ const ModernCourseDetail = () => {
       setIsEnrolled(isNowEnrolled);
 
       if (isNowEnrolled) {
+        await fetchProgressData();
+      } else {
+        console.warn("⚠️ Enrollment succeeded but verification failed. Forcing enrolled state.");
+        // Force enrolled state since enrollment API succeeded
+        setIsEnrolled(true);
         await fetchProgressData();
       }
     } catch (error) {
@@ -646,41 +670,60 @@ const ModernCourseDetail = () => {
       <div className="modern-content">
         {activeTab === "curriculum" && (
           <div className="curriculum-section">
-            
-
-            <div className="modules-grid">
-              {(course.modules || []).map((module, moduleIndex) => {
-                const isLocked = !isEnrolled;
-
+            {(() => {
+              // Handle both 'modules' and 'topics' properties
+              const modulesList = course.modules || course.topics || [];
+              
+              console.log("=== CURRICULUM DEBUG ===");
+              console.log("Course has modules:", !!course.modules);
+              console.log("Course has topics:", !!course.topics);
+              console.log("Modules count:", modulesList.length);
+              console.log("Modules data:", modulesList);
+              
+              if (modulesList.length === 0) {
                 return (
-                  <div
-                    key={moduleIndex}
-                    className={`modern-module ${isLocked ? "locked" : ""}`}
-                  >
-                    <div className="module-card">
-                      <div className="module-header">
-                        <div className="module-number">
-                          {isLocked ? (
-                            <Lock size={18} />
-                          ) : (
-                            <span className="number">{moduleIndex + 1}</span>
-                          )}
-                        </div>
+                  <div className="no-modules-message">
+                    <BookOpen size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+                    <h3>No Curriculum Available</h3>
+                    <p>This course doesn't have any modules yet.</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="modules-grid">
+                  {modulesList.map((module, moduleIndex) => {
+                    const isLocked = !isEnrolled;
 
-                        <div className="module-content">
-                          <div className="module-title-row">
-                            <h4 className="module-title">{module.title}</h4>
+                    return (
+                      <div
+                        key={moduleIndex}
+                        className={`modern-module ${isLocked ? "locked" : ""}`}
+                      >
+                        <div className="module-card">
+                          <div className="module-header">
+                            <div className="module-number">
+                              {isLocked ? (
+                                <Lock size={18} />
+                              ) : (
+                                <span className="number">{moduleIndex + 1}</span>
+                              )}
+                            </div>
 
-                            {!isLocked && (
-                              <button
-                                onClick={() =>
-                                  navigate(
-                                    `/courses/${courseId}/module/${module._id}/theory`
-                                  )
-                                }
-                                className="review-btn"
-                              >
-                                Start
+                            <div className="module-content">
+                              <div className="module-title-row">
+                                <h4 className="module-title">{module.title || module.module || `Module ${moduleIndex + 1}`}</h4>
+
+                                {!isLocked && (
+                                  <button
+                                    onClick={() =>
+                                      navigate(
+                                        `/courses/${courseId}/module/${module._id}/theory`
+                                      )
+                                    }
+                                    className="review-btn"
+                                  >
+                                    Start
                                 <ChevronRight size={14} />
                               </button>
                             )}
@@ -870,7 +913,9 @@ const ModernCourseDetail = () => {
                   </div>
                 );
               })}
-            </div>
+                </div>
+              );
+            })()}
 
             {/* Final Exam */}
             {course.finalExam && course.finalExam.isActive && (

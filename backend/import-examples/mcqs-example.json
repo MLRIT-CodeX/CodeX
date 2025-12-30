@@ -1,0 +1,200 @@
+{
+  "target": "module",
+  "mcqs": [
+    {
+      "question": "What is the output of print(type(5))?",
+      "options": [
+        "<class 'int'>",
+        "<class 'float'>",
+        "<class 'str'>",
+        "<class 'number'>"
+      ],
+      "correct": 0,
+      "explanation": "The number 5 is an integer, so type(5) returns <class 'int'>",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "Which of the following is a mutable data type in Python?",
+      "options": [
+        "Tuple",
+        "String",
+        "List",
+        "Integer"
+      ],
+      "correct": 2,
+      "explanation": "Lists are mutable, meaning their contents can be changed after creation. Tuples, strings, and integers are immutable.",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "What does the 'len()' function do?",
+      "options": [
+        "Returns the length of an object",
+        "Converts to lowercase",
+        "Removes whitespace",
+        "Sorts a list"
+      ],
+      "correct": 0,
+      "explanation": "The len() function returns the number of items in an object (string, list, tuple, etc.)",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "How do you start a comment in Python?",
+      "options": [
+        "//",
+        "#",
+        "/*",
+        "--"
+      ],
+      "correct": 1,
+      "explanation": "In Python, comments start with the # symbol",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "What is the correct way to create a function in Python?",
+      "options": [
+        "function myFunc():",
+        "def myFunc():",
+        "create myFunc():",
+        "func myFunc():"
+      ],
+      "correct": 1,
+      "explanation": "Functions in Python are defined using the 'def' keyword",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "Which operator is used for exponentiation in Python?",
+      "options": [
+        "^",
+        "**",
+        "exp()",
+        "pow"
+      ],
+      "correct": 1,
+      "explanation": "The ** operator is used for exponentiation. For example, 2**3 equals 8",
+      "marks": 1,
+      "difficulty": "medium"
+    },
+    {
+      "question": "What is the output of: print(3 * 'ab')?",
+      "options": [
+        "3ab",
+        "ababab",
+        "ab3",
+        "Error"
+      ],
+      "correct": 1,
+      "explanation": "String multiplication repeats the string. 3 * 'ab' produces 'ababab'",
+      "marks": 1,
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which method is used to add an element to the end of a list?",
+      "options": [
+        "add()",
+        "append()",
+        "insert()",
+        "push()"
+      ],
+      "correct": 1,
+      "explanation": "The append() method adds an element to the end of a list",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "What is the time complexity of accessing an element in a list by index?",
+      "options": [
+        "O(1)",
+        "O(n)",
+        "O(log n)",
+        "O(n^2)"
+      ],
+      "correct": 0,
+      "explanation": "Accessing a list element by index is a constant time operation O(1)",
+      "marks": 2,
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which of the following is NOT a valid variable name in Python?",
+      "options": [
+        "_myvar",
+        "myVar",
+        "my-var",
+        "my_var"
+      ],
+      "correct": 2,
+      "explanation": "Variable names cannot contain hyphens. 'my-var' would be interpreted as subtraction",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "What does the 'range(5)' function produce?",
+      "options": [
+        "Numbers 1 to 5",
+        "Numbers 0 to 5",
+        "Numbers 0 to 4",
+        "Numbers 1 to 4"
+      ],
+      "correct": 2,
+      "explanation": "range(5) produces numbers from 0 to 4 (5 is not included)",
+      "marks": 1,
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which keyword is used to create a class in Python?",
+      "options": [
+        "class",
+        "Class",
+        "define",
+        "object"
+      ],
+      "correct": 0,
+      "explanation": "The 'class' keyword is used to define a class in Python",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "What is the output of: bool(0)?",
+      "options": [
+        "True",
+        "False",
+        "0",
+        "Error"
+      ],
+      "correct": 1,
+      "explanation": "In Python, 0 is considered False when converted to boolean",
+      "marks": 1,
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which method converts a string to lowercase?",
+      "options": [
+        "lowercase()",
+        "toLower()",
+        "lower()",
+        "casefold()"
+      ],
+      "correct": 2,
+      "explanation": "The lower() method converts a string to lowercase",
+      "marks": 1,
+      "difficulty": "easy"
+    },
+    {
+      "question": "What is a lambda function in Python?",
+      "options": [
+        "A function with no name",
+        "A function that returns lambda",
+        "A Greek letter function",
+        "A recursive function"
+      ],
+      "correct": 0,
+      "explanation": "Lambda functions are anonymous (unnamed) functions defined using the lambda keyword",
+      "marks": 1,
+      "difficulty": "medium"
+    }
+  ]
+}

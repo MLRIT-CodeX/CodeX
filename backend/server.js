@@ -43,6 +43,14 @@ try {
 }
 app.use("/api", require("./routes/finalExamRoutes")); // Final Exams
 
+console.log("Loading import routes...");
+try {
+  app.use("/api/import", require("./routes/importRoutes")); // Course Import
+  console.log("✅ Import routes loaded successfully.");
+} catch (error) {
+  console.error("❌ Error loading import routes:", error.message);
+}
+
 console.log("Loading contribution routes...");
 try {
   app.use("/api/contributions", require("./routes/contributionRoutes")); // User Contributions

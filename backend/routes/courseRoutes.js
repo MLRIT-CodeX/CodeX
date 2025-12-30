@@ -123,8 +123,24 @@ router.get("/mcq-totals", authenticateToken, async (req, res) => {
 ================================ */
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    const courses = await Course.find()
-      .select("title description difficulty enrolledCount createdAt");
+    console.log("=== GET ALL COURSES ===");
+    
+    // Don't use .select() - get all fields
+    const courses = await Course.find();
+    
+    console.log(`Found ${courses.length} courses`);
+    
+    // Log each course's modules
+    courses.forEach((course, index) => {
+      console.log(`Course ${index + 1}: ${course.title}`);
+      console.log(`  - Modules in DB: ${course.modules?.length || 0}`);
+      console.log(`  - Has modules property: ${!!course.modules}`);
+      console.log(`  - Modules type: ${typeof course.modules}`);
+      if (course.modules && course.modules.length > 0) {
+        console.log(`  - First module: ${course.modules[0].title || course.modules[0].module}`);
+      }
+    });
+    
     res.json(courses);
   } catch (err) {
     console.error("❌ Error fetching courses:", err);
@@ -141,6 +157,8 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
     const { userId } = req.params;
 
     console.log('=== GET USER COURSES DEBUG ===');
+    console.log('Requested userId:', userId);
+    console.log('Authenticated user:', req.user.id);
 
     if (req.user.id !== userId && req.user.role !== "admin") {
       console.log("❌ Access denied: User mismatch");
@@ -153,6 +171,9 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
       enrolledUsers: userId,
       isActive: true
     }).select("_id title description difficulty enrolledCount createdAt");
+
+    console.log(`Found ${courses.length} enrolled courses`);
+    console.log('Course IDs:', courses.map(c => c._id.toString()));
 
     res.json({
       courses,
@@ -175,12 +196,28 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
 ================================ */
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
+    console.log("=== GET COURSE BY ID ===");
+    console.log("Course ID:", req.params.id);
+    
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid course ID" });
     }
 
     const course = await Course.findById(req.params.id);
-    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (!course) {
+      console.log("❌ Course not found");
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    console.log("✅ Course found:", course.title);
+    console.log("Modules count:", course.modules?.length || 0);
+    console.log("Has modules property:", !!course.modules);
+    
+    if (course.modules && course.modules.length > 0) {
+      console.log("First module:", course.modules[0].title || course.modules[0].module);
+    } else {
+      console.log("⚠️ No modules in this course");
+    }
 
     res.json(course);
   } catch (err) {
@@ -406,20 +443,35 @@ router.patch("/:id/basic", authenticateToken, isAdmin, async (req, res) => {
 ================================ */
 router.post("/:id/enroll", authenticateToken, async (req, res) => {
   try {
+    console.log("=== ENROLLMENT REQUEST ===");
+    console.log("Course ID:", req.params.id);
+    console.log("User ID:", req.user.id);
+    
     const course = await Course.findById(req.params.id);
-    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (!course) {
+      console.log("❌ Course not found");
+      return res.status(404).json({ message: "Course not found" });
+    }
 
     const userId = req.user.id;
+    
+    console.log("Current enrolledUsers:", course.enrolledUsers);
+    console.log("Is already enrolled?", course.enrolledUsers.includes(userId));
 
     if (!course.enrolledUsers.includes(userId)) {
       course.enrolledUsers.push(userId);
       course.enrolledCount = course.enrolledUsers.length;
       await course.save();
+      console.log("✅ User enrolled successfully");
+      console.log("New enrolledUsers:", course.enrolledUsers);
+    } else {
+      console.log("ℹ️ User already enrolled");
     }
 
     res.json({
       message: "Enrolled successfully",
-      enrolledCount: course.enrolledCount
+      enrolledCount: course.enrolledCount,
+      isEnrolled: true
     });
 
   } catch (err) {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Play,
   Lightbulb,
@@ -12,6 +13,7 @@ import {
   Send,
   RotateCcw,
 } from 'lucide-react';
+import MonacoCodeEditor from '../../components/MonacoCodeEditor';
 import ModuleNavigationHeader from '../../components/ModuleNavigationHeader';
 import ModuleNavigationFooter from '../../components/ModuleNavigationFooter';
 import { useModuleData } from '../../hooks/useModuleData';
@@ -31,6 +33,16 @@ const Challenges = () => {
   const [currentChallenge, setCurrentChallenge] = useState(0);
   const [leftWidth, setLeftWidth] = useState(50);
   const [codeHeight, setCodeHeight] = useState(60);
+  const [language, setLanguage] = useState('python');
+  const [isRunning, setIsRunning] = useState(false);
+  
+  // Language mapping for Judge0
+  const languageMap = {
+    cpp: 54,
+    python: 71,
+    java: 62,
+    javascript: 63
+  };
 
   /* ======================================
      ✅ Navigation flow (MCQ → Challenges → next)
@@ -56,9 +68,9 @@ const Challenges = () => {
   };
 
   /* ======================================
-     ✅ Run mock test cases (simulated)
+     ✅ Run test cases using Judge0
      ====================================== */
-  const runTests = (index) => {
+  const runTests = async (index) => {
     const challenge = getChallenges()[index];
     const userCode = solutions[index] || '';
 
@@ -74,37 +86,236 @@ const Challenges = () => {
       return;
     }
 
-    const mockResults = {
-      success: Math.random() > 0.3,
-      message: Math.random() > 0.3 ? '✅ All test cases passed!' : '❌ Some test cases failed.',
-      testCases:
-        challenge.testCases?.map((t) => ({
-          input: t.input,
-          expected: t.expectedOutput,
-          actual: Math.random() > 0.3 ? t.expectedOutput : 'Incorrect Output',
-          passed: Math.random() > 0.3,
-        })) || [],
-    };
+    if (!challenge.testCases || challenge.testCases.length === 0) {
+      setTestResults((prev) => ({
+        ...prev,
+        [index]: {
+          success: false,
+          message: '⚠️ No test cases available for this challenge.',
+          testCases: [],
+        },
+      }));
+      return;
+    }
 
-    setTestResults((prev) => ({ ...prev, [index]: mockResults }));
+    setIsRunning(true);
+    setTestResults((prev) => ({
+      ...prev,
+      [index]: {
+        success: false,
+        message: '⏳ Running test cases...',
+        testCases: [],
+      },
+    }));
+
+    try {
+      const results = [];
+      let allPassed = true;
+      const startTime = Date.now();
+
+      // Run against all visible test cases
+      for (let i = 0; i < challenge.testCases.length; i++) {
+        const testCase = challenge.testCases[i];
+        
+        // Skip hidden test cases during run
+        if (testCase.isHidden) continue;
+        
+        const res = await axios.post(
+          "http://localhost:2358/submissions?base64_encoded=false&wait=true",
+          {
+            language_id: languageMap[language],
+            source_code: userCode,
+            stdin: testCase.input || '',
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        const { stdout, stderr, compile_output, status } = res.data;
+        const actualOutput = (stdout || stderr || compile_output || "").trim();
+        const expectedOutput = (testCase.expectedOutput || testCase.output || "").trim();
+        const passed = actualOutput === expectedOutput && status?.id === 3; // 3 = Accepted
+        
+        results.push({
+          input: testCase.input,
+          expected: expectedOutput,
+          actual: actualOutput,
+          passed: passed,
+          status: status?.description || 'Unknown'
+        });
+
+        if (!passed) {
+          allPassed = false;
+        }
+      }
+
+      const endTime = Date.now();
+      const runtime = endTime - startTime;
+
+      setTestResults((prev) => ({
+        ...prev,
+        [index]: {
+          success: allPassed,
+          message: allPassed 
+            ? `✅ All test cases passed! (${runtime}ms)` 
+            : '❌ Some test cases failed.',
+          testCases: results,
+          runtime: runtime
+        },
+      }));
+
+    } catch (err) {
+      console.error("Run Error:", err);
+      setTestResults((prev) => ({
+        ...prev,
+        [index]: {
+          success: false,
+          message: '❌ Error running code: ' + (err.response?.data?.message || err.message),
+          testCases: [],
+        },
+      }));
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   /* ======================================
-     ✅ Submit solution (mock)
+     ✅ Submit solution using Judge0 with hidden test cases
      ====================================== */
-  const submitSolution = (index) => {
+  const submitSolution = async (index) => {
+    const challenge = getChallenges()[index];
     const userCode = solutions[index] || '';
-    if (!userCode.trim()) return alert('Please write your code before submitting.');
+    
+    if (!userCode.trim()) {
+      alert('Please write your code before submitting.');
+      return;
+    }
+
+    if (!challenge.testCases || challenge.testCases.length === 0) {
+      alert('No test cases available for submission.');
+      return;
+    }
 
     setSubmissionStatus((prev) => ({ ...prev, [index]: 'submitting' }));
+    setTestResults((prev) => ({
+      ...prev,
+      [index]: {
+        success: false,
+        message: '⏳ Evaluating against all test cases (including hidden)...',
+        testCases: [],
+      },
+    }));
 
-    setTimeout(() => {
-      const accepted = Math.random() > 0.4;
-      setSubmissionStatus((prev) => ({
+    try {
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+      let allTestsPassed = true;
+      let passedCount = 0;
+      const totalCount = challenge.testCases.length;
+      const startTime = Date.now();
+      const results = [];
+
+      // Run against ALL test cases (including hidden ones)
+      for (let i = 0; i < challenge.testCases.length; i++) {
+        const testCase = challenge.testCases[i];
+        
+        const res = await axios.post(
+          "http://localhost:2358/submissions?base64_encoded=false&wait=true",
+          {
+            language_id: languageMap[language],
+            source_code: userCode,
+            stdin: testCase.input || '',
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        const { stdout, stderr, compile_output, status } = res.data;
+        const actualOutput = (stdout || stderr || compile_output || "").trim();
+        const expectedOutput = (testCase.expectedOutput || testCase.output || "").trim();
+        const passed = actualOutput === expectedOutput && status?.id === 3; // 3 = Accepted
+        
+        // Only show results for non-hidden test cases
+        if (!testCase.isHidden) {
+          results.push({
+            input: testCase.input,
+            expected: expectedOutput,
+            actual: actualOutput,
+            passed: passed,
+            status: status?.description || 'Unknown'
+          });
+        }
+
+        if (passed) {
+          passedCount++;
+        } else {
+          allTestsPassed = false;
+        }
+      }
+
+      const endTime = Date.now();
+      const runtime = endTime - startTime;
+
+      // Display results
+      if (allTestsPassed) {
+        setSubmissionStatus((prev) => ({ ...prev, [index]: 'accepted' }));
+        setTestResults((prev) => ({
+          ...prev,
+          [index]: {
+            success: true,
+            message: `✅ Accepted! All ${totalCount} test cases passed. (${runtime}ms)`,
+            testCases: results,
+            runtime: runtime,
+            passedCount: totalCount,
+            totalCount: totalCount
+          },
+        }));
+
+        // Award marks to user (save to database)
+        try {
+          await axios.post(
+            "http://localhost:5000/api/progress/challenge-complete",
+            {
+              userId: userId,
+              courseId: courseId,
+              moduleId: moduleId,
+              challengeId: challenge._id || `challenge-${index}`,
+              marks: challenge.marks || 10,
+              language: language,
+              code: userCode,
+              runtime: runtime
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch (err) {
+          console.error("Error saving progress:", err);
+        }
+
+      } else {
+        setSubmissionStatus((prev) => ({ ...prev, [index]: 'rejected' }));
+        setTestResults((prev) => ({
+          ...prev,
+          [index]: {
+            success: false,
+            message: `❌ Wrong Answer. Passed ${passedCount}/${totalCount} test cases.`,
+            testCases: results,
+            runtime: runtime,
+            passedCount: passedCount,
+            totalCount: totalCount
+          },
+        }));
+      }
+
+    } catch (err) {
+      console.error("Submission Error:", err);
+      setSubmissionStatus((prev) => ({ ...prev, [index]: 'rejected' }));
+      setTestResults((prev) => ({
         ...prev,
-        [index]: accepted ? 'accepted' : 'rejected',
+        [index]: {
+          success: false,
+          message: '❌ Error submitting code: ' + (err.response?.data?.message || err.message),
+          testCases: [],
+        },
       }));
-    }, 1500);
+    }
   };
 
   /* ======================================
@@ -306,6 +517,17 @@ const Challenges = () => {
               {/* Right Panel - Code Editor and Output */}
               <div className="coding-right" style={{ width: `${100 - leftWidth}%` }}>
                 <div className="editor-toolbar">
+                  <div className="toolbar-left">
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="language-selector"
+                    >
+                      <option value="python">Python</option>
+                      <option value="java">Java</option>
+                      <option value="cpp">C++</option>
+                    </select>
+                  </div>
                   <div className="toolbar-buttons">
                     <button
                       onClick={() => toggleHint(currentChallenge)}
@@ -323,13 +545,14 @@ const Challenges = () => {
                     <button
                       onClick={() => runTests(currentChallenge)}
                       className="run-button"
+                      disabled={isRunning}
                     >
-                      <Play size={14} /> Run Tests
+                      <Play size={14} /> {isRunning ? 'Running...' : 'Run Tests'}
                     </button>
                     <button
                       onClick={() => submitSolution(currentChallenge)}
                       className="submit-button"
-                      disabled={submissionStatus[currentChallenge] === 'submitting'}
+                      disabled={submissionStatus[currentChallenge] === 'submitting' || isRunning}
                     >
                       <Send size={14} />
                       {submissionStatus[currentChallenge] === 'submitting'
@@ -343,14 +566,15 @@ const Challenges = () => {
                   </div>
                 </div>
 
-                {/* Code Editor Area */}
+                {/* Monaco Code Editor */}
                 <div className="code-editor-area" style={{ height: `${codeHeight}%` }}>
-                  <textarea
-                    className="code-textarea"
+                  <MonacoCodeEditor
+                    language={language}
+                    onLanguageChange={setLanguage}
                     value={solutions[currentChallenge] || challenges[currentChallenge]?.initialCode || ''}
-                    onChange={(e) => handleSolutionChange(currentChallenge, e.target.value)}
-                    placeholder="Write your solution here..."
-                    spellCheck={false}
+                    onChange={(code) => handleSolutionChange(currentChallenge, code)}
+                    height="100%"
+                    showLanguageSelector={false}
                   />
                 </div>
 
@@ -360,16 +584,53 @@ const Challenges = () => {
                     <div className="output-section">
                       <div className="output-header">
                         <h3>Test Results</h3>
+                        {testResults[currentChallenge]?.runtime && (
+                          <span className="runtime-badge">
+                            <Clock size={12} /> {testResults[currentChallenge].runtime}ms
+                          </span>
+                        )}
                       </div>
                       <div className={`test-results ${testResults[currentChallenge]?.success ? 'success' : 'failure'}`}>
-                        <p>{testResults[currentChallenge]?.message}</p>
-                        <div className="test-cases">
-                          {testResults[currentChallenge]?.testCases?.map((t, i) => (
-                            <div key={i} className={`test-case ${t.passed ? 'passed' : 'failed'}`}>
-                              <strong>Input:</strong> {t.input} | <strong>Expected:</strong> {t.expected} | <strong>Actual:</strong> {t.actual}
-                            </div>
-                          ))}
-                        </div>
+                        <p className="result-message">{testResults[currentChallenge]?.message}</p>
+                        
+                        {testResults[currentChallenge]?.passedCount !== undefined && (
+                          <div className="test-summary">
+                            <strong>Test Cases: </strong>
+                            <span className={testResults[currentChallenge].success ? 'text-success' : 'text-error'}>
+                              {testResults[currentChallenge].passedCount} / {testResults[currentChallenge].totalCount} passed
+                            </span>
+                          </div>
+                        )}
+                        
+                        {testResults[currentChallenge]?.testCases?.length > 0 && (
+                          <div className="test-cases">
+                            {testResults[currentChallenge].testCases.map((t, i) => (
+                              <div key={i} className={`test-case ${t.passed ? 'passed' : 'failed'}`}>
+                                <div className="test-case-header">
+                                  <strong>Test Case {i + 1}</strong>
+                                  <span className={`status-badge ${t.passed ? 'success' : 'error'}`}>
+                                    {t.passed ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                                    {t.status || (t.passed ? 'Passed' : 'Failed')}
+                                  </span>
+                                </div>
+                                <div className="test-case-details">
+                                  <div className="test-detail">
+                                    <strong>Input:</strong>
+                                    <pre>{t.input || '(empty)'}</pre>
+                                  </div>
+                                  <div className="test-detail">
+                                    <strong>Expected:</strong>
+                                    <pre>{t.expected}</pre>
+                                  </div>
+                                  <div className="test-detail">
+                                    <strong>Actual:</strong>
+                                    <pre className={t.passed ? 'text-success' : 'text-error'}>{t.actual}</pre>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

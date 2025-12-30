@@ -1,0 +1,124 @@
+{
+  "modules": [
+    {
+      "title": "Python Basics",
+      "description": "Introduction to Python programming fundamentals",
+      "order": 1,
+      "estimatedDuration": "2-3 hours",
+      "prerequisites": [],
+      "learningObjectives": [
+        "Understand Python syntax and structure",
+        "Work with variables and data types",
+        "Use basic operators and expressions"
+      ]
+    },
+    {
+      "title": "Control Flow",
+      "description": "Learn about conditional statements and loops",
+      "order": 2,
+      "estimatedDuration": "2-3 hours",
+      "prerequisites": ["Python Basics"],
+      "learningObjectives": [
+        "Use if-elif-else statements",
+        "Implement for and while loops",
+        "Understand break and continue statements"
+      ]
+    },
+    {
+      "title": "Functions",
+      "description": "Master function definition and usage",
+      "order": 3,
+      "estimatedDuration": "3-4 hours",
+      "prerequisites": ["Python Basics", "Control Flow"],
+      "learningObjectives": [
+        "Define and call functions",
+        "Work with parameters and return values",
+        "Understand scope and lambda functions"
+      ]
+    },
+    {
+      "title": "Data Structures",
+      "description": "Explore lists, tuples, dictionaries, and sets",
+      "order": 4,
+      "estimatedDuration": "3-4 hours",
+      "prerequisites": ["Python Basics"],
+      "learningObjectives": [
+        "Work with lists and tuples",
+        "Use dictionaries for key-value storage",
+        "Understand sets and their operations"
+      ]
+    },
+    {
+      "title": "Object-Oriented Programming",
+      "description": "Learn OOP concepts and implementation",
+      "order": 5,
+      "estimatedDuration": "4-5 hours",
+      "prerequisites": ["Functions", "Data Structures"],
+      "learningObjectives": [
+        "Create classes and objects",
+        "Implement inheritance and polymorphism",
+        "Use encapsulation and abstraction"
+      ]
+    },
+    {
+      "title": "File Handling",
+      "description": "Read from and write to files",
+      "order": 6,
+      "estimatedDuration": "2-3 hours",
+      "prerequisites": ["Python Basics"],
+      "learningObjectives": [
+        "Open and close files properly",
+        "Read and write text files",
+        "Work with CSV and JSON files"
+      ]
+    },
+    {
+      "title": "Exception Handling",
+      "description": "Handle errors and exceptions gracefully",
+      "order": 7,
+      "estimatedDuration": "2-3 hours",
+      "prerequisites": ["Functions"],
+      "learningObjectives": [
+        "Use try-except blocks",
+        "Handle multiple exception types",
+        "Create custom exceptions"
+      ]
+    },
+    {
+      "title": "Modules and Packages",
+      "description": "Organize code with modules and packages",
+      "order": 8,
+      "estimatedDuration": "2-3 hours",
+      "prerequisites": ["Functions"],
+      "learningObjectives": [
+        "Import and use modules",
+        "Create custom modules",
+        "Work with packages and __init__.py"
+      ]
+    },
+    {
+      "title": "Advanced Topics",
+      "description": "Decorators, generators, and more",
+      "order": 9,
+      "estimatedDuration": "4-5 hours",
+      "prerequisites": ["Functions", "Object-Oriented Programming"],
+      "learningObjectives": [
+        "Use decorators to modify functions",
+        "Create and use generators",
+        "Understand context managers"
+      ]
+    },
+    {
+      "title": "Python Standard Library",
+      "description": "Explore commonly used standard library modules",
+      "order": 10,
+      "estimatedDuration": "3-4 hours",
+      "prerequisites": ["Modules and Packages"],
+      "learningObjectives": [
+        "Use datetime for date and time operations",
+        "Work with collections module",
+        "Utilize os and sys modules"
+      ]
+    }
+  ]
+}

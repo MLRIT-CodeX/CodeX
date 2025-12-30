@@ -8,6 +8,8 @@ import {
   Eye, Lock, Monitor, Copy, MousePointer, Maximize, RefreshCw
 } from "lucide-react";
 import Button from "../components/ui/Button";
+import CourseImport from "../components/CourseImport";
+import ContentImportButton from "../components/ContentImportButton";
 import "./AdminCreateCourse.css";
 
 const STORAGE_KEY = "admin_create_course_draft";
@@ -21,6 +23,7 @@ const AdminCreateCourse = () => {
   const [lastSaved, setLastSaved] = useState(null);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentCourseId, setCurrentCourseId] = useState(null);
 
   // Load saved UI state
   const loadUIState = () => {
@@ -535,6 +538,18 @@ const AdminCreateCourse = () => {
             </label>
             <span className="toggle-text">Auto-save</span>
           </div>
+          <CourseImport 
+            onImportSuccess={(result) => {
+              console.log('Import successful:', result);
+              if (result.course) {
+                // If a complete course was imported, redirect to edit it
+                alert('Course imported successfully! Redirecting...');
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1500);
+              }
+            }}
+          />
           <Button
             type="button"
             onClick={manualSave}
@@ -826,7 +841,41 @@ const AdminCreateCourse = () => {
                       </div>
 
                       <div className="subsection">
-                        <h4>📝 Theory Content</h4>
+                        <div className="subsection-header">
+                          <h4>📝 Theory Content</h4>
+                          <ContentImportButton
+                            importType="theory"
+                            courseId={currentCourseId || 'temp'}
+                            moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                            buttonText="Import Theory"
+                            onImportSuccess={(result) => {
+                              console.log('Theory imported:', result);
+                              // Handle both formats: direct properties or wrapped in theory
+                              if (result.textContent || result.files) {
+                                // Direct format from example file
+                                setValue(`modules.${moduleIndex}.theory.textContent`, result.textContent || '');
+                                if (result.files) {
+                                  if (result.files.pdf) {
+                                    setValue(`modules.${moduleIndex}.theory.files.pdf.name`, result.files.pdf.name || '');
+                                    setValue(`modules.${moduleIndex}.theory.files.pdf.url`, result.files.pdf.url || '');
+                                  }
+                                  if (result.files.ppt) {
+                                    setValue(`modules.${moduleIndex}.theory.files.ppt.name`, result.files.ppt.name || '');
+                                    setValue(`modules.${moduleIndex}.theory.files.ppt.url`, result.files.ppt.url || '');
+                                  }
+                                  if (result.files.doc) {
+                                    setValue(`modules.${moduleIndex}.theory.files.doc.name`, result.files.doc.name || '');
+                                    setValue(`modules.${moduleIndex}.theory.files.doc.url`, result.files.doc.url || '');
+                                  }
+                                }
+                              } else if (result.theory) {
+                                // Wrapped format
+                                setValue(`modules.${moduleIndex}.theory`, result.theory);
+                              }
+                              alert('Theory content imported successfully!');
+                            }}
+                          />
+                        </div>
                         <div className="form-group">
                           <label>Text Content</label>
                           <textarea
@@ -881,17 +930,35 @@ const AdminCreateCourse = () => {
                       <div className="subsection">
                         <div className="subsection-header">
                           <h4>💻 Code Examples</h4>
-                          <Button
-                            type="button"
-                            onClick={() => addCodeExample(moduleIndex)}
-                            variant="outline"
-                            size="sm"
-                            loading={false}
-                            disabled={false}
-                          >
-                            <Plus size={14} />
-                            Add Example
-                          </Button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <ContentImportButton
+                              importType="snippets"
+                              courseId={currentCourseId || 'temp'}
+                              moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                              buttonText="Import Snippets"
+                              onImportSuccess={(result) => {
+                                console.log('Snippets imported:', result);
+                                // Handle both formats: direct codeExamples or wrapped in snippets
+                                if (result.codeExamples) {
+                                  setValue(`modules.${moduleIndex}.snippets.codeExamples`, result.codeExamples);
+                                } else if (result.snippets) {
+                                  setValue(`modules.${moduleIndex}.snippets`, result.snippets);
+                                }
+                                alert('Code snippets imported successfully!');
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => addCodeExample(moduleIndex)}
+                              variant="outline"
+                              size="sm"
+                              loading={false}
+                              disabled={false}
+                            >
+                              <Plus size={14} />
+                              Add Example
+                            </Button>
+                          </div>
                         </div>
 
                         {watchedModules[moduleIndex]?.snippets?.codeExamples?.map((example, exampleIndex) => (
@@ -959,17 +1026,41 @@ const AdminCreateCourse = () => {
                       <div className="subsection">
                         <div className="subsection-header">
                           <h4>🎓 Lectures</h4>
-                          <Button
-                            type="button"
-                            onClick={() => addLectureToModule(moduleIndex)}
-                            variant="outline"
-                            size="sm"
-                            loading={false}
-                            disabled={false}
-                          >
-                            <Plus size={14} />
-                            Add Lecture
-                          </Button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <ContentImportButton
+                              importType="lecture"
+                              courseId={currentCourseId || 'temp'}
+                              moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                              buttonText="Import Lectures"
+                              onImportSuccess={(result) => {
+                                console.log('Lectures imported:', result);
+                                // Handle both formats: direct properties or wrapped in lecture
+                                if (result.module && result.lectures) {
+                                  // Direct format from example file
+                                  setValue(`modules.${moduleIndex}.lecture`, {
+                                    module: result.module,
+                                    lectures: result.lectures,
+                                    estimatedDuration: result.estimatedDuration || "30-45 min"
+                                  });
+                                } else if (result.lecture) {
+                                  // Wrapped format
+                                  setValue(`modules.${moduleIndex}.lecture`, result.lecture);
+                                }
+                                alert('Lecture content imported successfully!');
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => addLectureToModule(moduleIndex)}
+                              variant="outline"
+                              size="sm"
+                              loading={false}
+                              disabled={false}
+                            >
+                              <Plus size={14} />
+                              Add Lecture
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="form-group">
@@ -1039,17 +1130,34 @@ const AdminCreateCourse = () => {
                       <div className="subsection">
                         <div className="subsection-header">
                           <h4>🎯 Module MCQs</h4>
-                          <Button
-                            type="button"
-                            onClick={() => addMCQToModule(moduleIndex)}
-                            variant="outline"
-                            size="sm"
-                            loading={false}
-                            disabled={false}
-                          >
-                            <Plus size={14} />
-                            Add MCQ
-                          </Button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <ContentImportButton
+                              importType="mcqs"
+                              courseId={currentCourseId || 'temp'}
+                              moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                              buttonText="Import MCQs"
+                              target="module"
+                              onImportSuccess={(result) => {
+                                console.log('MCQs imported:', result);
+                                if (result.mcqs) {
+                                  const currentMcqs = watchedModules[moduleIndex]?.mcqs || [];
+                                  setValue(`modules.${moduleIndex}.mcqs`, [...currentMcqs, ...result.mcqs]);
+                                }
+                                alert('MCQs imported successfully!');
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => addMCQToModule(moduleIndex)}
+                              variant="outline"
+                              size="sm"
+                              loading={false}
+                              disabled={false}
+                            >
+                              <Plus size={14} />
+                              Add MCQ
+                            </Button>
+                          </div>
                         </div>
 
                         {watchedModules[moduleIndex]?.mcqs?.map((mcq, mcqIndex) => (
@@ -1070,7 +1178,8 @@ const AdminCreateCourse = () => {
                                   {...register(`modules.${moduleIndex}.mcqs.${mcqIndex}.marks`)}
                                   placeholder="Marks"
                                   className="marks-input"
-                                  min="0.5"
+                                  min="1"
+                                  step="1"
                                 />
                                 <Button
                                   type="button"
@@ -1137,17 +1246,34 @@ const AdminCreateCourse = () => {
                       <div className="subsection">
                         <div className="subsection-header">
                           <h4>💻 Coding Challenges</h4>
-                          <Button
-                            type="button"
-                            onClick={() => addCodingChallengeToModule(moduleIndex)}
-                            variant="outline"
-                            size="sm"
-                            loading={false}
-                            disabled={false}
-                          >
-                            <Plus size={14} />
-                            Add Challenge
-                          </Button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <ContentImportButton
+                              importType="challenges"
+                              courseId={currentCourseId || 'temp'}
+                              moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                              buttonText="Import Challenges"
+                              target="module"
+                              onImportSuccess={(result) => {
+                                console.log('Challenges imported:', result);
+                                if (result.challenges) {
+                                  const currentChallenges = watchedModules[moduleIndex]?.codeChallenges || [];
+                                  setValue(`modules.${moduleIndex}.codeChallenges`, [...currentChallenges, ...result.challenges]);
+                                }
+                                alert('Coding challenges imported successfully!');
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => addCodingChallengeToModule(moduleIndex)}
+                              variant="outline"
+                              size="sm"
+                              loading={false}
+                              disabled={false}
+                            >
+                              <Plus size={14} />
+                              Add Challenge
+                            </Button>
+                          </div>
                         </div>
 
                         {watchedModules[moduleIndex]?.codeChallenges?.map((challenge, challengeIndex) => (
@@ -1254,17 +1380,34 @@ const AdminCreateCourse = () => {
                         
                         <div className="subsection-header">
                           <h5>Test MCQs</h5>
-                          <Button
-                            type="button"
-                            onClick={() => addMCQToModule(moduleIndex, "moduleTest")}
-                            variant="outline"
-                            size="sm"
-                            loading={false}
-                            disabled={false}
-                          >
-                            <Plus size={14} />
-                            Add MCQ
-                          </Button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <ContentImportButton
+                              importType="mcqs"
+                              courseId={currentCourseId || 'temp'}
+                              moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                              buttonText="Import Test MCQs"
+                              target="moduleTest"
+                              onImportSuccess={(result) => {
+                                console.log('Test MCQs imported:', result);
+                                if (result.mcqs) {
+                                  const currentMcqs = watchedModules[moduleIndex]?.moduleTest?.mcqs || [];
+                                  setValue(`modules.${moduleIndex}.moduleTest.mcqs`, [...currentMcqs, ...result.mcqs]);
+                                }
+                                alert('Module test MCQs imported successfully!');
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => addMCQToModule(moduleIndex, "moduleTest")}
+                              variant="outline"
+                              size="sm"
+                              loading={false}
+                              disabled={false}
+                            >
+                              <Plus size={14} />
+                              Add MCQ
+                            </Button>
+                          </div>
                         </div>
 
                         {watchedModules[moduleIndex]?.moduleTest?.mcqs?.map((mcq, mcqIndex) => (
@@ -1319,6 +1462,8 @@ const AdminCreateCourse = () => {
                                 {...register(`modules.${moduleIndex}.moduleTest.mcqs.${mcqIndex}.marks`)}
                                 placeholder="Marks"
                                 className="marks-input"
+                                min="1"
+                                step="1"
                               />
                             </div>
                           </div>
@@ -1326,17 +1471,34 @@ const AdminCreateCourse = () => {
 
                         <div className="subsection-header">
                           <h5>Test Coding Challenges</h5>
-                          <Button
-                            type="button"
-                            onClick={() => addCodingChallengeToModule(moduleIndex, "moduleTest")}
-                            variant="outline"
-                            size="sm"
-                            loading={false}
-                            disabled={false}
-                          >
-                            <Plus size={14} />
-                            Add Challenge
-                          </Button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <ContentImportButton
+                              importType="challenges"
+                              courseId={currentCourseId || 'temp'}
+                              moduleId={watchedModules[moduleIndex]?._id || `temp-${moduleIndex}`}
+                              buttonText="Import Test Challenges"
+                              target="moduleTest"
+                              onImportSuccess={(result) => {
+                                console.log('Test challenges imported:', result);
+                                if (result.challenges) {
+                                  const currentChallenges = watchedModules[moduleIndex]?.moduleTest?.codeChallenges || [];
+                                  setValue(`modules.${moduleIndex}.moduleTest.codeChallenges`, [...currentChallenges, ...result.challenges]);
+                                }
+                                alert('Module test challenges imported successfully!');
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => addCodingChallengeToModule(moduleIndex, "moduleTest")}
+                              variant="outline"
+                              size="sm"
+                              loading={false}
+                              disabled={false}
+                            >
+                              <Plus size={14} />
+                              Add Challenge
+                            </Button>
+                          </div>
                         </div>
 
                         {watchedModules[moduleIndex]?.moduleTest?.codeChallenges?.map((challenge, challengeIndex) => (
@@ -1576,6 +1738,8 @@ const AdminCreateCourse = () => {
                               {...register(`finalExam.mcqs.${mcqIndex}.marks`)}
                               placeholder="Marks"
                               className="marks-input"
+                              min="1"
+                              step="1"
                             />
                             <Button
                               type="button"

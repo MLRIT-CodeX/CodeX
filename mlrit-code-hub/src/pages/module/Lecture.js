@@ -28,77 +28,12 @@ const Lecture = () => {
   const prevPath = `/courses/${courseId}/module/${moduleId}/snippets`;
   const nextPath = `/courses/${courseId}/module/${moduleId}/mcq`;
 
-  // ✅ Section Icons
-  const getSectionIcon = (type) => {
-    const icons = {
-      introduction: <BookOpen size={20} />,
-      definitions: <AlertCircle size={20} />,
-      examples: <Code size={20} />,
-      best_practices: <Star size={20} />,
-      takeaways: <Lightbulb size={20} />
-    };
-    return icons[type] || <BookOpen size={20} />;
-  };
-
-  // ✅ Section Title
-  const getSectionTitle = (type) => {
-    const titles = {
-      introduction: 'Introduction',
-      definitions: 'Key Definitions',
-      examples: 'Real-Time Examples',
-      best_practices: 'Best Practices',
-      takeaways: 'Key Takeaways'
-    };
-    return titles[type] || type?.charAt(0).toUpperCase() + type?.slice(1);
-  };
-
   // ✅ Toggle expand/collapse
   const toggleSection = (type) => {
     const newExpanded = new Set(expandedSections);
     newExpanded.has(type) ? newExpanded.delete(type) : newExpanded.add(type);
     setExpandedSections(newExpanded);
   };
-
-
-
-  // ✅ Mock data for modules without lecture
-  const getMockLectureData = () => ({
-    moduleTitle: 'Python Basics',
-    lectures: [
-      {
-        type: 'introduction',
-        content: `
-          <p>Welcome to the Python Basics Lecture! In this section, you'll learn the fundamentals of Python programming.</p>
-          <ul>
-            <li>Python Syntax</li>
-            <li>Variables and Data Types</li>
-            <li>Basic I/O</li>
-          </ul>`
-      },
-      {
-        type: 'examples',
-        content: `
-          <pre><code># Example: Simple Calculator
-a = 5
-b = 10
-print("Sum:", a + b)</code></pre>`
-      },
-      {
-        type: 'takeaways',
-        content: `
-          <p>✅ Python is easy to learn and highly versatile.</p>
-          <p>✅ Great for data science, web development, and automation.</p>`
-      }
-    ],
-    codeExamples: [
-      {
-        title: 'Print Function',
-        language: 'python',
-        code: `print("Hello, World!")`,
-        explanation: 'This prints a greeting message to the console.'
-      }
-    ]
-  });
 
   /* ======================================
      🌀 Loading & Error Handling
@@ -134,10 +69,43 @@ print("Sum:", a + b)</code></pre>`
   /* ======================================
      ✅ Lecture Data Extraction
      ====================================== */
-  const lectureData =
-    module?.lecture?.lectures?.length > 0
-      ? module.lecture
-      : getMockLectureData();
+  const lectureData = module?.lecture || null;
+  
+  console.log('=== LECTURE DEBUG ===');
+  console.log('Module:', module);
+  console.log('Lecture data:', lectureData);
+  console.log('Lectures array:', lectureData?.lectures);
+
+  // If no lecture data, show message
+  if (!lectureData || !lectureData.lectures || lectureData.lectures.length === 0) {
+    return (
+      <div className="lecture-layout">
+        <ModuleNavigationHeader 
+          currentTopic="lecture"
+          moduleTitle={module?.title || 'Module'}
+          courseTitle="Python Programming"
+        />
+        
+        <div className="lecture-main">
+          <div className="lecture-content">
+            <div className="lecture-empty">
+              <BookOpen size={64} style={{ opacity: 0.3 }} />
+              <h2>No Lecture Content Available</h2>
+              <p>This module doesn't have lecture content yet.</p>
+              <button
+                onClick={() => navigate(`/courses/${courseId}`)}
+                className="back-button"
+              >
+                Back to Course
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <ModuleNavigationFooter currentTopic="lecture" />
+      </div>
+    );
+  }
 
 
 
@@ -154,31 +122,31 @@ print("Sum:", a + b)</code></pre>`
       
       <div className="lecture-main">
         <div className="lecture-content">
+          <div className="lecture-header">
+            <h1>{lectureData.module || module.title}</h1>
+            {lectureData.estimatedDuration && (
+              <span className="duration-badge">{lectureData.estimatedDuration}</span>
+            )}
+          </div>
 
-
-          {/* ✅ Lecture Sections */}
+          {/* ✅ Lecture Topics */}
           <div className="lecture-sections">
-            {lectureData.lectures.map((section, idx) => {
-              const sectionType = section?.type || `section-${idx}`;
+            {lectureData.lectures.map((lecture, idx) => {
+              const sectionType = `lecture-${idx}`;
               const isExpanded = expandedSections.has(sectionType);
 
               return (
-                <div
-                  key={sectionType}
-                  className="lecture-section"
-                >
+                <div key={sectionType} className="lecture-section">
                   <div
                     className="section-header"
                     onClick={() => toggleSection(sectionType)}
                   >
                     <div className="section-info">
                       <div className="section-icon">
-                        {getSectionIcon(sectionType)}
+                        <BookOpen size={20} />
                       </div>
                       <div className="section-title-area">
-                        <h3 className="section-title">
-                          {getSectionTitle(sectionType)}
-                        </h3>
+                        <h3 className="section-title">{lecture.topic}</h3>
                       </div>
                     </div>
                     <div className="section-controls">
@@ -194,51 +162,131 @@ print("Sum:", a + b)</code></pre>`
 
                   {isExpanded && (
                     <div className="section-content">
-                      <div
-                        className="content-body"
-                        dangerouslySetInnerHTML={{
-                          __html:
-                            section.content ||
-                            '<p>No content available for this section.</p>'
-                        }}
-                      />
+                      {/* Definition */}
+                      {lecture.content?.definition && (
+                        <div className="content-block">
+                          <h4 className="block-title">
+                            <AlertCircle size={18} />
+                            Definition
+                          </h4>
+                          <div className="block-content">
+                            {Array.isArray(lecture.content.definition) ? (
+                              <ul>
+                                {lecture.content.definition.map((def, i) => (
+                                  <li key={i}>{def}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p>{lecture.content.definition}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Syntax */}
+                      {lecture.content?.syntax && (
+                        <div className="content-block">
+                          <h4 className="block-title">
+                            <Code size={18} />
+                            Syntax
+                          </h4>
+                          <pre className="syntax-code">
+                            <code>{lecture.content.syntax}</code>
+                          </pre>
+                        </div>
+                      )}
+
+                      {/* Examples */}
+                      {lecture.content?.examples && lecture.content.examples.length > 0 && (
+                        <div className="content-block">
+                          <h4 className="block-title">
+                            <Code size={18} />
+                            Examples
+                          </h4>
+                          <div className="examples-grid">
+                            {lecture.content.examples.map((example, i) => (
+                              <div key={i} className="example-card">
+                                <div className="example-header">
+                                  <h5>{example.title}</h5>
+                                  {example.description && (
+                                    <p className="example-desc">{example.description}</p>
+                                  )}
+                                </div>
+                                <pre className="example-code">
+                                  <code>{example.code}</code>
+                                </pre>
+                                {example.explanation && (
+                                  <div className="example-explanation">
+                                    <strong>Explanation:</strong>
+                                    {Array.isArray(example.explanation) ? (
+                                      <ul>
+                                        {example.explanation.map((exp, j) => (
+                                          <li key={j}>{exp}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p>{example.explanation}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Key Takeaways */}
+                      {lecture.content?.keyTakeaways && lecture.content.keyTakeaways.length > 0 && (
+                        <div className="content-block">
+                          <h4 className="block-title">
+                            <Lightbulb size={18} />
+                            Key Takeaways
+                          </h4>
+                          <ul className="takeaways-list">
+                            {lecture.content.keyTakeaways.map((takeaway, i) => (
+                              <li key={i}>
+                                <CheckCircle size={16} />
+                                {takeaway}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Practice Section */}
+                      {lecture.content?.practiceSection && (
+                        <div className="content-block practice-block">
+                          <h4 className="block-title">
+                            <Star size={18} />
+                            Ready to Practice?
+                          </h4>
+                          <div className="practice-info">
+                            <p>{lecture.content.practiceSection.description}</p>
+                            <div className="practice-stats">
+                              {lecture.content.practiceSection.mcqs && (
+                                <span className="practice-stat">
+                                  📝 {lecture.content.practiceSection.mcqs}
+                                </span>
+                              )}
+                              {lecture.content.practiceSection.coding_challenges && (
+                                <span className="practice-stat">
+                                  💻 {lecture.content.practiceSection.coding_challenges}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-
-          {/* ✅ Code Examples Section */}
-          {lectureData.codeExamples?.length > 0 && (
-            <div className="code-examples-section">
-              <h3 className="examples-title">Code Examples</h3>
-              <div className="code-examples-grid">
-                {lectureData.codeExamples.map((example, index) => (
-                  <div key={index} className="code-example-card">
-                    <div className="example-header">
-                      <h4 className="example-title">{example.title}</h4>
-                      <span className="language-badge">
-                        {example.language || 'python'}
-                      </span>
-                    </div>
-                    <pre className="example-code">
-                      <code>{example.code}</code>
-                    </pre>
-                    <div className="example-explanation">
-                      <p>{example.explanation}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
       
-      <ModuleNavigationFooter 
-        currentTopic="lecture"
-      />
+      <ModuleNavigationFooter currentTopic="lecture" />
     </div>
   );
 };

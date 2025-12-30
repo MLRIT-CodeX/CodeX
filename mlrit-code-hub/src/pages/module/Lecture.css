@@ -359,3 +359,253 @@ Goal: Beautiful, readable, and immersive
 .lecture-main::-webkit-scrollbar-track {
   background: #111827;
 }
+
+/* Lecture Header */
+.lecture-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(138, 0, 196, 0.3);
+}
+
+.lecture-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.duration-badge {
+  padding: 6px 14px;
+  background: rgba(138, 0, 196, 0.2);
+  color: #8A00C4;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Content Blocks */
+.content-block {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.block-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #8A00C4;
+}
+
+.block-content {
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.block-content ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.block-content li {
+  margin-bottom: 0.5rem;
+}
+
+/* Syntax Code */
+.syntax-code {
+  background: #1a1a2e;
+  border: 1px solid rgba(138, 0, 196, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.syntax-code code {
+  color: #10b981;
+}
+
+/* Examples Grid */
+.examples-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.example-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.25rem;
+  transition: all 0.3s;
+}
+
+.example-card:hover {
+  border-color: rgba(138, 0, 196, 0.5);
+  transform: translateY(-2px);
+}
+
+.example-header h5 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.example-desc {
+  margin: 0 0 1rem 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.example-code {
+  background: #1a1a2e;
+  border: 1px solid rgba(138, 0, 196, 0.2);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+}
+
+.example-code code {
+  color: #60a5fa;
+}
+
+.example-explanation {
+  color: #cbd5e1;
+  font-size: 0.875rem;
+}
+
+.example-explanation strong {
+  color: #8A00C4;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.example-explanation ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.example-explanation li {
+  margin-bottom: 0.25rem;
+}
+
+/* Takeaways List */
+.takeaways-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.takeaways-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 0.75rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.takeaways-list li svg {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Practice Block */
+.practice-block {
+  background: rgba(138, 0, 196, 0.05);
+  border-color: rgba(138, 0, 196, 0.3);
+}
+
+.practice-info p {
+  margin: 0 0 1rem 0;
+  color: #cbd5e1;
+}
+
+.practice-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.practice-stat {
+  padding: 8px 16px;
+  background: rgba(138, 0, 196, 0.2);
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #8A00C4;
+}
+
+/* Empty State */
+.lecture-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.lecture-empty h2 {
+  margin: 1rem 0 0.5rem 0;
+  color: #e5e7eb;
+  font-size: 1.5rem;
+}
+
+.lecture-empty p {
+  margin: 0 0 2rem 0;
+  font-size: 1rem;
+}
+
+.back-button {
+  padding: 10px 24px;
+  background: #8A00C4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: #6b0099;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .lecture-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .lecture-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .lecture-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .examples-grid {
+    grid-template-columns: 1fr;
+  }
+}
