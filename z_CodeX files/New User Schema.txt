@@ -1,0 +1,130 @@
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+
+const userSchema = new mongoose.Schema({
+  // Standalone Fields for Authentication/Authorization
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  role: {
+    type: String,
+    enum: ["student", "admin"],
+    default: "student",
+  },
+  profilePic: {
+    type: String,
+    default: "",
+  },
+
+  // Object 1: Personal Information
+  personalInfo: {
+    name: {
+      type: String,
+      required: true, // Previously 'name' was required
+    },
+    phoneNumber: {
+      type: String,
+      // You might want to add validation for format here
+    },
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Other"], // Previously 'gender' had an enum
+    },
+    dob: {
+      type: Date, // Previously 'dob' was a Date
+    },
+  },
+
+  // Object 2: Academic Information
+  academic: {
+    college: {
+      type: String,
+      enum: ["MLRIT", "MRLS", "IARE"],
+      required: true, // Previously 'college' was required
+    },
+    rollNumber: {
+      type: String,
+      required: true, // Previously 'rollNumber' was required
+      unique: true,
+    },
+    year: { // Academic/Expected Graduation Year
+      type: Number,
+      enum: [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038, 2039, 2040],
+      required: true, // Previously 'year' was required
+    },
+    department: {
+      type: String,
+      enum: ["CSE", "CSD", "CSC", "CSM", "IT", "CSIT", "ECE", "EEE", "AERO", "MECH"],
+      required: true, // Previously 'department' was required
+    },
+    currentSemester: {
+      type: Number,
+      enum: [1, 2, 3, 4, 5, 6, 7, 8],
+    },
+    cgpa: {
+      type: Number,
+      min: 0,
+      max: 10,
+    },
+  },
+
+  // Object 3: Address
+  address: {
+    street: { type: String },
+    district: { type: String },
+    city: { type: String },
+    state: { type: String },
+    pincode: { type: Number },
+  },
+
+  // Object 4: Coding Profiles
+  codingProfiles: {
+    leetcode: { type: String },
+    codechef: { type: String },
+    codeforces: { type: String },
+    github: { type: String },
+    linkedin: { type: String },
+  },
+
+  // Object 5: Professional Profiles (New)
+  profiles: {
+    portfolioLink: { type: String },
+    resumeLink: { type: String },
+  },
+
+  // Object 6: Social Links (New)
+  socialLinks: {
+    facebook: { type: String },
+    instagram: { type: String },
+    twitter: { type: String },
+  },
+
+  // Object 7: Skills (New - Array of Strings)
+  skills: {
+    type: [String],
+    default: [],
+  },
+
+  // Object 8: Interests (New - Array of Strings)
+  interests: {
+    type: [String],
+    default: [],
+  },
+});
+
+// Hash password before saving (This hook remains the same and is essential)
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+const User = mongoose.model("User", userSchema);
+module.exports = User;
